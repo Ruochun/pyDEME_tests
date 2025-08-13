@@ -1,5 +1,97 @@
 import os
 import DEME
+import pychrono as chrono
+
+# Concrete properties
+h_layer=4.0; 
+minD=5.0
+maxD=10.0
+cement=571
+WtoC=0.45 
+AtoC=2.62 
+rho_c=3150
+rho_w=1000
+vair=0.03
+nF=0.5	
+
+# volume of specimen
+specimenVol=( chrono.CH_PI*pow(100,2)*600/3- chrono.CH_PI*pow(50,2)*300/3)
+Vol=specimenVol
+
+va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair
+va0=(1-pow((minD/maxD),nF))*va
+Va0=va0*Vol
+rho=cement*(1.0+WtoC+AtoC)*1E-12
+
+# Define material parameters of fresh concrete
+mortar_layer=h_layer
+ENm=2.0   # 4.0E-2;
+ENa=100
+h=mortar_layer	
+alpha=0.25
+beta=0.5
+np=1.0
+sgmTmax=2.0E-4
+sgmTau0=1E-7
+kappa0=100.
+eta_inf=2.0E-5
+
+def AddSlumpCone(sys, mat, density, radius, height, current_dir):
+    obj_file = current_dir + "/coni_100_50_300.obj"
+    SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
+    SlumpCone.SetMass(1e8)
+    q = chrono.QuatFromAngleAxis(chrono.CH_PI_2, chrono.VECT_Z)
+    SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
+    SlumpCone.SetInitPos([0,133,0])
+    return sys.Track(SlumpCone)
+
+def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
+
+	particles = []
+
+	with open(file_name, "r") as f:
+		# read in a file (ignoring the lines with // comments)
+		for line in f:
+			if line.startswith("//"):
+				continue
+			parts = line.split()
+			if len(parts) == 5:
+				n = int(parts[0])
+				x = float(parts[1])
+				y = float(parts[2])
+				z = float(parts[3])
+				d = float(parts[4])
+				particles.append((n, x, y, z, d))
+
+	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
+	# ChVector3d t(0,0,0)
+	csys = chrono.ChCoordsysd(chrono.ChVector3d(0, 0, 0), q)
+	
+	my_templates = []
+	body_points_new = []
+	for particle in particles:
+		x_pos=particle[1]
+		y_pos=particle[2]
+		z_pos=particle[3]
+       
+		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
+		rotatedpos=csys.TransformPointLocalToParent(pos)
+		print("pos: ", pos, "\t", "rotated pos: ", rotatedpos)
+		
+		radius=particle[4]/2+h_layer
+		mass = rho/2*4/3*pow(radius, 3)*chrono.CH_PI
+
+        # create templates for each sphere
+		my_templates.append(sys.LoadSphereType(
+            mass,
+            radius,
+            mat
+        ))
+		body_points_new.append([rotatedpos.x(), rotatedpos.y(), rotatedpos.z()])
+	# Add the particles to the system
+	added = sys.AddClumps(my_templates, body_points_new)
+	return sys.Track(added)
+		      
 
 if __name__ == "__main__":
 
@@ -22,106 +114,74 @@ if __name__ == "__main__":
     DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
     DEMSim.SetJitifyClumpTemplates(False)
     DEMSim.SetJitifyMassProperties(False)
-    DEMSim.InstructBoxDomainDimension(500.0, 500.0, 500.0)
+    DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
     DEMSim.SetErrorOutAvgContacts(250)
 	
     DEMSim.SetGravitationalAcceleration([0, -9810, 0])
 	
-    # Floor is at y=0, pointing towards +y
-	DEMSim.Add
-	
     floor_mat = DEMSim.LoadMaterial({"ENm_mat":ENm, "ENa_mat":ENa, "mortar_layer_mat":mortar_layer, 
                                        "alpha_mat":alpha, "beta_mat":beta, "np_mat":np, "sgmTmax_mat":sgmTmax, 
-                                       "sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf,
-                                       "flocbeta_mat":flocbeta, "flocTcr_mat":flocTcr, "flocm_mat":flocm, "lambda_init_mat":lambda_init})
+                                       "sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf})
+	
+    # Floor is at y=0, pointing towards +y
+    bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
     
-    # Create the floor body
-    auto floor_mat = chrono_types::make_shared<ChContactMaterialSMC>();
-    floor_mat->SetYoungModulus(1e2); //2e3
-    floor_mat->SetFriction(0.5);
-    floor_mat->SetRestitution(0.0f);
-    floor_mat->SetAdhesion(0.0);
-    //floor_mat->SetCohesion(0);
-    auto floorBody = chrono_types::make_shared<ChBodyEasyBox>(900, 10, 900, 2.4e-9, true, true, floor_mat);
-    floorBody->SetPos(ChVector3d(0, -5, 0));
-    floorBody->SetFixed(true);
-    sys.Add(floorBody);
-    //	
-    auto mat = chrono_types::make_shared<ChContactMaterialSMC>();
-    mat->SetYoungModulus(1e2); //2e3
-    mat->SetFriction(0.5);
-    mat->SetRestitution(0.0f);
-    mat->SetAdhesion(0.0);
-    //mat->SetCohesion(0);	
-    double cyl_radius=100;
-    double cyl_height=150;
-    double density=7.8E-9;
-    //
-    auto SlumpConeBody =AddSlumpCone(sys, mat, density*1000, cyl_radius, cyl_height, current_dir);
-    SlumpConeBody->GetVisualShape(0)->SetOpacity(0.4f);
-    SlumpConeBody->SetFixed(true);
-    //
-    //
-    //volume of specimen
-    double specimenVol=( CH_PI*pow(100,2)*600/3- CH_PI*pow(50,2)*300/3);
-    double Vol=specimenVol;
-    //
-    // Concrete properties
-    double h_layer=4.0; 
-    double minD=5.0;
-    double maxD=10.0;
-    double cement=571; 
-    double WtoC=0.45;  
-    double AtoC=2.62;  
-    double rho_c=3150;
-    double rho_w=1000;
-    double vair=0.03;
-    double nF=0.5;	
-    //
-    double va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair;
-    double va0=(1-pow((minD/maxD),nF))*va;	
-    double Va0=va0*Vol;
-    double rho=cement*(1.0+WtoC+AtoC)*1E-12;
-    //
-    //
-    // Define material parameters of fresh concrete
-    //
-    float mortar_layer=h_layer;
-    float ENm=2.0;   //4.0E-2;
-    float ENa=100;
-    float h=mortar_layer;		
-    float alpha=0.25;
-    float beta=0.5;
-    float np=1.0;
-    float sgmTmax=2.0E-4;
-    float sgmTau0=1E-7;
-    float kappa0=100.;
-    float eta_inf=2.0E-5;    
-    //
-    //
-	//////////////////////////////////////////////////
-    //	Change default contact force algorithm to fresh concrete ones
-    //////////////////////////////////////////////////
-    auto Contact_force_algorithm = chrono_types::make_unique<FCContactForce>();
-    auto materialFCM=chrono_types::make_shared<ChMaterialFCM>(ENm, ENa, mortar_layer, 
-									alpha, beta, np, sgmTmax, sgmTau0, kappa0, eta_inf);
-    Contact_force_algorithm->Set_Material(materialFCM);
-    sys.SetContactForceTorqueAlgorithm(std::move(Contact_force_algorithm));
-    //
-    auto container = chrono_types::make_shared<MyContactContainer>();
-    sys.SetContactContainer(container);	
-    //
-    //////////////////////////////////////////////////
-    // Read and load predefined particle list
-    //////////////////////////////////////////////////
-    std::string data_path=current_dir;
-    std::string file_name="DFCgeo000-data-particles-SCC-2";
-    ReadDFCparticles(sys, vis, data_path, file_name, rho, mortar_layer);
-    // 
-    ////////////////////////////////////////////////
-    //
-	auto topPlate = AddTopWall(sys);
-	auto top_plate_collision = topPlate->GetCollisionModel()->GetShapeInstance(0).shape;
+    cyl_radius=100
+    cyl_height=150
+    density=7.8E-9
+
+    SlumpConeBody = AddSlumpCone(DEMSim, floor_mat, density*1000, cyl_radius, cyl_height, current_dir)
+
+    # Change default contact force algorithm to fresh concrete ones
+    my_force_model = DEMSim.ReadContactForceModel("DFCModel.mod")
+    # Those following lines are needed. We must let the solver know that those var names are history variable etc.
+    my_force_model.SetMustHaveMatProp(set([]))
+    my_force_model.SetMustPairwiseMatProp(set([]))
+    my_force_model.SetPerContactWildcards(
+        set(["contact_info_step_time", "contact_info_lambda", "contact_info_strain_x", "contact_info_strain_y", "contact_info_strain_z"])
+    )
+    my_force_model.SetPerOwnerWildcards(set(["ParticleThixoAvg"]))
+    # Add a utility function for the force model to use
+    my_force_model.DefineCustomModelPrerequisites("""
+                                                   void __device__ XdirToDxDyDz(const float3 &Vxdir,
+                                                                                const float3 &Vsingular, 
+                                                                                float3 &Vx,
+                                                                                float3 &Vy, 
+                                                                                float3 &Vz) {
+                                                        const float3 mVnull = make_float3(0);
+                                                        float zlen;
+                                                        if (length(Vxdir) < 1e-8) {
+                                                        Vx = make_float3(1, 0, 0); // default X direction
+                                                        } else {
+                                                        Vx = normalize(Vxdir);
+                                                        }
+                                                        Vz = cross(Vx, Vsingular);
+                                                        zlen = length(Vz);
+
+                                                        if (zlen < 1e-6) {
+                                                        float3 mVsingualr;
+                                                        if (abs(Vsingular.z) < 0.9)
+                                                            mVsingualr = make_float3(0, 0, 1);
+                                                        if (abs(Vsingular.y) < 0.9)
+                                                            mVsingualr = make_float3(0, 1, 0);
+                                                        if (abs(Vsingular.x) < 0.9)
+                                                            mVsingualr = make_float3(1, 0, 0);
+                                                        Vz = cross(Vx, mVsingualr);
+                                                        zlen = length(Vz);
+                                                        }
+
+                                                        Vz = normalize(Vz);
+                                                        Vy = cross(Vz, Vx);
+                                                    };
+                                                  """
+                                                  )
+	
+    # Read and load predefined particle list
+    ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2/", rho, floor_mat, mortar_layer)
+    
+	# Top plate is at y=300, pointing towards -y
+    topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
+
 	//
 	////////////////////////////////////////////
     // Bind all existing visual shapes to the visualization system
