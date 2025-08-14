@@ -1,5 +1,7 @@
-import os
 import DEME
+
+import os
+
 import pychrono as chrono
 
 # Concrete properties
@@ -36,14 +38,18 @@ sgmTau0=1E-7
 kappa0=100.
 eta_inf=2.0E-5
 
+# Define fixed family
+FIXED_FAM = 10
+
 def AddSlumpCone(sys, mat, density, radius, height, current_dir):
-    obj_file = current_dir + "/coni_100_50_300.obj"
-    SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
-    SlumpCone.SetMass(1e8)
-    q = chrono.QuatFromAngleAxis(chrono.CH_PI_2, chrono.VECT_Z)
-    SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
-    SlumpCone.SetInitPos([0,133,0])
-    return sys.Track(SlumpCone)
+	obj_file = current_dir + "/coni_100_50_300.obj"
+	SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
+	SlumpCone.SetMass(1e8)
+	q = chrono.QuatFromAngleAxis(chrono.CH_PI_2, chrono.VECT_Z)
+	SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
+	SlumpCone.SetInitPos([0,133,0])
+	SlumpCone.SetFamily(FIXED_FAM)
+	return sys.Track(SlumpCone)
 
 def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
@@ -95,224 +101,187 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 if __name__ == "__main__":
 
-    # get the current directory
-    current_dir = os.getcwd()
+	# get the current directory
+	current_dir = os.getcwd()
 
-    out_dir = current_dir + "/OUT_slump_V1/"; 
+	out_dir = current_dir + "/OUT_slump_V1/"; 
 	# Create oputput directories
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-    else:
-        os.system("rm -r "+out_dir+"/*")
+	if not os.path.exists(out_dir):
+		os.makedirs(out_dir)
+	else:
+		os.system("rm -r "+out_dir+"/*")
+	print("Output directory: ", out_dir)
 		
-    DEMSim = DEME.DEMSolver()
-    DEMSim.SetVerbosity("INFO")
-    DEMSim.SetOutputFormat("CSV")
-    DEMSim.SetOutputContent(["ABSV", "XYZ"])
-    DEMSim.SetMeshOutputFormat("VTK")
-    # This is needed, as contact wildcards are extracted later on, so we need to notify the solver to include them
-    DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
-    DEMSim.SetJitifyClumpTemplates(False)
-    DEMSim.SetJitifyMassProperties(False)
-    DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
-    DEMSim.SetErrorOutAvgContacts(250)
-	
-    DEMSim.SetGravitationalAcceleration([0, -9810, 0])
-	
-    floor_mat = DEMSim.LoadMaterial({"ENm_mat":ENm, "ENa_mat":ENa, "mortar_layer_mat":mortar_layer, 
-                                       "alpha_mat":alpha, "beta_mat":beta, "np_mat":np, "sgmTmax_mat":sgmTmax, 
-                                       "sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf})
-	
-    # Floor is at y=0, pointing towards +y
-    bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
-    
-    cyl_radius=100
-    cyl_height=150
-    density=7.8E-9
+	DEMSim = DEME.DEMSolver()
+	DEMSim.SetVerbosity("INFO")
+	DEMSim.SetOutputFormat("CSV")
+	DEMSim.SetOutputContent(["ABSV", "XYZ"])
+	DEMSim.SetMeshOutputFormat("VTK")
+	# This is needed, as contact wildcards are extracted later on, so we need to notify the solver to include them
+	DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
+	DEMSim.SetJitifyClumpTemplates(False)
+	DEMSim.SetJitifyMassProperties(False)
+	DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
+	DEMSim.SetErrorOutAvgContacts(250)
 
-    SlumpConeBody = AddSlumpCone(DEMSim, floor_mat, density*1000, cyl_radius, cyl_height, current_dir)
+	DEMSim.SetGravitationalAcceleration([0, -9810, 0])
 
-    # Change default contact force algorithm to fresh concrete ones
-    my_force_model = DEMSim.ReadContactForceModel("DFCModel.mod")
-    # Those following lines are needed. We must let the solver know that those var names are history variable etc.
-    my_force_model.SetMustHaveMatProp(set([]))
-    my_force_model.SetMustPairwiseMatProp(set([]))
-    my_force_model.SetPerContactWildcards(
-        set(["contact_info_step_time", "contact_info_lambda", "contact_info_strain_x", "contact_info_strain_y", "contact_info_strain_z"])
-    )
-    my_force_model.SetPerOwnerWildcards(set(["ParticleThixoAvg"]))
-    # Add a utility function for the force model to use
-    my_force_model.DefineCustomModelPrerequisites("""
-                                                   void __device__ XdirToDxDyDz(const float3 &Vxdir,
-                                                                                const float3 &Vsingular, 
-                                                                                float3 &Vx,
-                                                                                float3 &Vy, 
-                                                                                float3 &Vz) {
-                                                        const float3 mVnull = make_float3(0);
-                                                        float zlen;
-                                                        if (length(Vxdir) < 1e-8) {
-                                                        Vx = make_float3(1, 0, 0); // default X direction
-                                                        } else {
-                                                        Vx = normalize(Vxdir);
-                                                        }
-                                                        Vz = cross(Vx, Vsingular);
-                                                        zlen = length(Vz);
+	floor_mat = DEMSim.LoadMaterial({"ENm_mat":ENm, "ENa_mat":ENa, "mortar_layer_mat":mortar_layer, 
+										"alpha_mat":alpha, "beta_mat":beta, "np_mat":np, "sgmTmax_mat":sgmTmax, 
+										"sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf})
 
-                                                        if (zlen < 1e-6) {
-                                                        float3 mVsingualr;
-                                                        if (abs(Vsingular.z) < 0.9)
-                                                            mVsingualr = make_float3(0, 0, 1);
-                                                        if (abs(Vsingular.y) < 0.9)
-                                                            mVsingualr = make_float3(0, 1, 0);
-                                                        if (abs(Vsingular.x) < 0.9)
-                                                            mVsingualr = make_float3(1, 0, 0);
-                                                        Vz = cross(Vx, mVsingualr);
-                                                        zlen = length(Vz);
-                                                        }
+	# Floor is at y=0, pointing towards +y
+	bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
 
-                                                        Vz = normalize(Vz);
-                                                        Vy = cross(Vz, Vx);
-                                                    };
-                                                  """
-                                                  )
+	cyl_radius=100
+	cyl_height=150
+	density=7.8E-9
+
+	SlumpConeBody = AddSlumpCone(DEMSim, floor_mat, density*1000, cyl_radius, cyl_height, current_dir)
+	# Let family 10 be fixed
+	DEMSim.SetFamilyFixed(FIXED_FAM)
+
+	# Change default contact force algorithm to fresh concrete ones
+	my_force_model = DEMSim.ReadContactForceModel("DFCModel.cu")
+	# Those following lines are needed. We must let the solver know that those var names are history variable etc.
+	my_force_model.SetMustHaveMatProp(set([]))
+	my_force_model.SetMustPairwiseMatProp(set([]))
+	my_force_model.SetPerContactWildcards(
+		set(["contact_info_step_time", "contact_info_lambda", "contact_info_strain_x", "contact_info_strain_y", "contact_info_strain_z"])
+	)
+	my_force_model.SetPerOwnerWildcards(set(["ParticleThixoAvg"]))
+	# Add a utility function for the force model to use
+	my_force_model.DefineCustomModelPrerequisites("""
+													void __device__ XdirToDxDyDz(const float3 &Vxdir,
+																				const float3 &Vsingular, 
+																				float3 &Vx,
+																				float3 &Vy, 
+																				float3 &Vz) {
+														const float3 mVnull = make_float3(0);
+														float zlen;
+														if (length(Vxdir) < 1e-8) {
+														Vx = make_float3(1, 0, 0); // default X direction
+														} else {
+														Vx = normalize(Vxdir);
+														}
+														Vz = cross(Vx, Vsingular);
+														zlen = length(Vz);
+
+														if (zlen < 1e-6) {
+														float3 mVsingualr;
+														if (abs(Vsingular.z) < 0.9)
+															mVsingualr = make_float3(0, 0, 1);
+														if (abs(Vsingular.y) < 0.9)
+															mVsingualr = make_float3(0, 1, 0);
+														if (abs(Vsingular.x) < 0.9)
+															mVsingualr = make_float3(1, 0, 0);
+														Vz = cross(Vx, mVsingualr);
+														zlen = length(Vz);
+														}
+
+														Vz = normalize(Vz);
+														Vy = cross(Vz, Vx);
+													};
+													"""
+													)
 	
-    # Read and load predefined particle list
-    ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2/", rho, floor_mat, mortar_layer)
-    
+	# Read and load predefined particle list
+	ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2/", rho, floor_mat, mortar_layer)
+
 	# Top plate is at y=300, pointing towards -y
-    topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
+	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
+	topPlate.SetFamily(FIXED_FAM)
 
-	//
-	////////////////////////////////////////////
-    // Bind all existing visual shapes to the visualization system
-    vis->AttachSystem(&sys);
-	///////////////////////////////////////////////////////////////////////////////////////////////////////    	     
-	//
-    // SOLVER & STEPPER ---  Modify some setting of the physical system for the simulation
-	//
-	/////////////////////////////////////////////////////////////////////////////////////////////////////// 
-    // Modify some setting of the physical system for the simulation, if you want
-	std::cout<<"\nSOLVER: Pardiso MKL - Stepper: HHT SetAlpha(-0.2)\n"<<std::endl;
-	auto solver = chrono_types::make_shared<ChSolverPardisoMKL>();    
-    sys.SetSolver(solver); 
-    solver->UseSparsityPatternLearner(true);
-    //solver->LockSparsityPattern(true);   
-    solver->SetVerbose(false);
-	//
-	auto mystepper=chrono_types::make_shared<ChTimestepperHHT>(&sys);    
-	mystepper->SetAlpha(-0.2); // alpha=-0.2 default value
-	mystepper->SetMaxIters(50);
-	mystepper->SetAbsTolerances(1e-06, 1e-06);  
-	mystepper->SetVerbose(false);	    
-	mystepper->SetModifiedNewton(true);
-	mystepper->SetStepControl(false);
-    sys.SetTimestepper(mystepper);
+	KE_finder = DEMSim.CreateInspector("clump_kinetic_energy")
 
-    // ===== Simulation loop =============
-    int step_num=0;
-    char filename[200];
-    //
-    double timestep = 1.0e-5;
-    double current_time;
-    //
-    auto body_list = sys.GetBodies();
-	//
+	timestep = 1.0e-8
+	DEMSim.SetInitTimeStep(timestep)
+	DEMSim.SetMaxVelocity(1000.)
+	DEMSim.SetErrorOutVelocity(1000.)
+
+	# DEMSim.SetCDUpdateFreq(5)
+	# DEMSim.DisableAdaptiveUpdateFreq()
+	DEMSim.Initialize()
+
+	# 1. phase: remove particles above the prism height 
+	print("\n 1. phase: remove particles above the prism height \n")
+
+	max_step_size = 1e-5
+
+	stepsize_increase_mult = 1.05
+	currframe = 0
+	t = 0.0
 	
-    // 1. phase: remove particles above the prism height ////////////////////////////////////////////////
-    //
-    std::cout<<"\n 1. phase: waiting with a plate on top of the SlumpCone\n"<<std::endl;	
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-	//
-    //
-    int kk=0;
-    //
-	//
-    timestep = 1.0e-8;
-    while (  vis->Run() &  sys.GetChTime()<0.75) {
-		//
-		//vis->Run() & 
-    	vis->BeginScene();
-		vis->Render();  
-		vis->EndScene();
-		//	
-		//
-		if (step_num%20==0){	
-			timestep=std::min(timestep*=1.05, 1.0e-5);
-		}
-		//
-        sys.DoStepDynamics(timestep);
-					
-		if (std::fmod(step_num, 800) ==0) {
-		    //
-		    sprintf(filename, "%s/slump_va_A%06d.vtk", out_dir.c_str(), step_num);
-		    WriteParticlesVTK(sys, filename, mortar_layer, true);
-		    sprintf(filename, "%s/slump_va_M%06d.vtk", out_dir.c_str(), step_num);
-		    WriteParticlesVTK(sys, filename, mortar_layer, false);		    
-		    std::cout<< "filename: "<<filename<<"\t";
-			//
-			double rho_new=materialFCM->CalculateEffDensity(sys, specimenVol, rho);
-			if (rho_new<rho/4.)
-			    rho_new=rho/4.;
-			materialFCM->ModifyDensity(sys, rho_new);
-			//
-			std::vector<std::shared_ptr<ChBody>> bodylist=sys.GetBodies();
-			double aggVolFrac=calc_aggVolFrac(bodylist, mortar_layer, specimenVol);
-			double current_time= sys.GetChTime();
-			double IE;
-			container->IterOnContactList(current_time,IE);
-			double KE=calculateKE(sys);
-			std::cout<<" time: "<< current_time << " va0: " << va0 <<  " aggVolFrac: "<< aggVolFrac << " IE: "<< IE << " KE: "<< KE << "\n";
-			
-			kk++;
-		}
+	step_num = 0
 
-		step_num++;
-		 
-		}
+	frame_time = 1. / 100.
+	out_time = 0.
+	while t < 0.75:
+		if (step_num % 20 == 0) and (timestep < max_step_size):
+			timestep = min(timestep*stepsize_increase_mult,max_step_size)
+			DEMSim.UpdateStepSize(timestep)
 
-	//
-	// 2. phase: remove containers and allow flow  ////////////////////////////////////////////////////
-	//
-	std::cout<<"\n 2. phase: flow  \n"<<std::endl;
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	SlumpConeBody->EnableCollision(false);
-	topPlate->EnableCollision(false);
-	//
-	timestep=1e-8;
-	//
-	auto t1=sys.GetChTime();
-	//
-	while ( vis->Run() & sys.GetChTime()<t1+9.5) {
-		//vis->Run() & 
-		vis->BeginScene();
-		vis->Render();  
-		vis->EndScene(); 
-		//
-		sys.DoStepDynamics(timestep);
-       	
-		if (step_num%10)
-		timestep=std::min(timestep*=1.01, 1.0e-5);
-		// 
-		if (std::fmod(step_num, 800) ==0) {
-		    sprintf(filename, "%s/slump_va_A%06d.vtk", out_dir.c_str(), step_num);
-		    WriteParticlesVTK(sys, filename, mortar_layer, true);
-		    sprintf(filename, "%s/slump_va_M%06d.vtk", out_dir.c_str(), step_num);
-		    WriteParticlesVTK(sys, filename, mortar_layer, false);		    
-		    std::cout<< "filename: "<<filename<<"\t";
-		    // 
-		    //
-		    double current_time= sys.GetChTime();
-		    std::vector<std::shared_ptr<ChBody>> bodylist=sys.GetBodies();
-		    double aggVolFrac=calc_aggVolFrac(bodylist, mortar_layer, specimenVol);
-		    double IE;
-		    container->IterOnContactList(current_time,IE);
-		    double KE=calculateKE(sys);
-		    std::cout<<" time: "<< current_time << " va0: " << va0 <<  " aggVolFrac: "<< aggVolFrac << " IE: "<< IE << " KE: "<< KE << "\n";
-     
-		 }
-		 
-		 step_num++;
-    } 
+		if (t >= out_time):
+			print(f"============ Time {t} =============")
+			print(f"Outputting frame: {currframe}")
+			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
+			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
+			DEMSim.WriteSphereFile(filename)
+			DEMSim.WriteMeshFile(meshname)
+			print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
+			# print(f"Bin num: {DEMSim.GetBinNum()}")
+			# print(f"Bin size: {DEMSim.GetBinSize()}")
+			# DEMSim.ShowThreadCollaborationStats()
+			# DEMSim.ShowMemStats()
+			# DEMSim.PrintKinematicScratchSpaceUsage()
 
-    return 0;
-}
+			currframe += 1
+			out_time += frame_time
+
+			ke = KE_finder.GetValue()
+			if (ke < 1e-3) and (step_num > 4000):
+				print("Kinetic energy is low, finishing up the settling phase.")
+				break
+
+		DEMSim.DoDynamics(timestep)
+		t += timestep
+		step_num += 1
+
+    
+
+	# 2. phase: remove containers and allow flow 
+	
+	print("\n 2. phase: flow  \n")
+
+	phase1_end = t
+	timestep=1e-8
+	stepsize_increase_mult = 1.01
+	
+	# Disable contact between some entities and the particles
+	DEMSim.DisableContactBetweenFamilies(FIXED_FAM, 0)
+
+	while t < phase1_end + 9.5:
+		if (step_num % 10 == 0) and (timestep < max_step_size):
+			timestep = min(timestep*stepsize_increase_mult,max_step_size)
+			DEMSim.UpdateStepSize(timestep)
+
+		if (t >= out_time):
+			print(f"============ Time {t} =============")
+			print(f"Outputting frame: {currframe}")
+			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
+			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
+			DEMSim.WriteSphereFile(filename)
+			DEMSim.WriteMeshFile(meshname)
+			print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
+			# print(f"Bin num: {DEMSim.GetBinNum()}")
+			# print(f"Bin size: {DEMSim.GetBinSize()}")
+			# DEMSim.ShowThreadCollaborationStats()
+			# DEMSim.ShowMemStats()
+			# DEMSim.PrintKinematicScratchSpaceUsage()
+
+			currframe += 1
+			out_time += frame_time
+
+		DEMSim.DoDynamics(timestep)
+		t += timestep
+		step_num += 1

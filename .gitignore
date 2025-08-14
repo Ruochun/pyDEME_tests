@@ -1,2 +1,4 @@
 **/
 *.tar*
+*.conda
+*Mixer.py*

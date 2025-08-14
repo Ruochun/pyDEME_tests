@@ -14,7 +14,7 @@ math_PI = 3.1415927
 # This model can be found in file ForceModelWithElectrostatic.cu, too.
 
 import pychrono as chrono
-import pychrono.irrlicht as chronoirr
+# import pychrono.irrlicht as chronoirr
 
 
 def force_model():
@@ -539,7 +539,7 @@ if __name__ == "__main__":
     # such as triangle and sphere. We use this value to derive the electrostatic force. But first, we need to
     # declare in the force model that a geometry wildcard is in use...
     # my_force_model = DEMSim.DefineContactForceModel(force_model())
-    my_force_model = DEMSim.ReadContactForceModel("DFCModel.mod")
+    my_force_model = DEMSim.ReadContactForceModel("DFCModel.cu")
 
     # Those following lines are needed. We must let the solver know that those var names are history variable etc.
     my_force_model.SetMustHaveMatProp(set([]))
