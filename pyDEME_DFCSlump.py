@@ -1,5 +1,7 @@
 import DEME
+from DEME import HCPSampler
 
+import numpy as np
 import os
 
 import pychrono as chrono
@@ -117,7 +119,7 @@ if __name__ == "__main__":
 	else:
 		os.system("rm -r "+out_dir+"/*")
 	print("Output directory: ", out_dir)
-		
+
 	DEMSim = DEME.DEMSolver()
 	DEMSim.SetVerbosity("INFO")
 	DEMSim.SetOutputFormat("CSV")
@@ -191,7 +193,7 @@ if __name__ == "__main__":
 													};
 													"""
 													)
-	
+
 	# Read and load predefined particle list
 	ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2.dat", rho, floor_mat, mortar_layer)
 
@@ -213,7 +215,7 @@ if __name__ == "__main__":
 	# 1. phase: waiting with a plate on top of the SlumpCone
 	print("\n 1. phase: waiting with a plate on top of the SlumpCone \n")
 
-	max_step_size = 5e-7
+	max_step_size = 1e-5
 
 	stepsize_increase_mult = 1.01
 	currframe = 0
