@@ -41,13 +41,19 @@ eta_inf=2.0E-5
 # Define fixed family
 FIXED_FAM = 10
 
+# These are placeholders
+flocbeta = 0.01
+flocm = 1.0
+flocTcr = 100.
+lambda_init = 2.0
+
 def AddSlumpCone(sys, mat, density, radius, height, current_dir):
 	obj_file = current_dir + "/coni_100_50_300.obj"
 	SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
 	SlumpCone.SetMass(1e8)
-	q = chrono.QuatFromAngleAxis(chrono.CH_PI_2, chrono.VECT_Z)
+	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
-	SlumpCone.SetInitPos([0,133,0])
+	# SlumpCone.SetInitPos([0,133,0])
 	SlumpCone.SetFamily(FIXED_FAM)
 	return sys.Track(SlumpCone)
 
@@ -93,7 +99,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
             radius,
             mat
         ))
-		body_points_new.append([rotatedpos.x(), rotatedpos.y(), rotatedpos.z()])
+		body_points_new.append([rotatedpos.x, rotatedpos.y, rotatedpos.z])
 	# Add the particles to the system
 	added = sys.AddClumps(my_templates, body_points_new)
 	return sys.Track(added)
@@ -128,7 +134,8 @@ if __name__ == "__main__":
 
 	floor_mat = DEMSim.LoadMaterial({"ENm_mat":ENm, "ENa_mat":ENa, "mortar_layer_mat":mortar_layer, 
 										"alpha_mat":alpha, "beta_mat":beta, "np_mat":np, "sgmTmax_mat":sgmTmax, 
-										"sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf})
+										"sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf, 
+										"flocbeta_mat":flocbeta, "flocTcr_mat":flocTcr, "flocm_mat":flocm, "lambda_init_mat":lambda_init})
 
 	# Floor is at y=0, pointing towards +y
 	bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
@@ -186,7 +193,7 @@ if __name__ == "__main__":
 													)
 	
 	# Read and load predefined particle list
-	ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2/", rho, floor_mat, mortar_layer)
+	ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2.dat", rho, floor_mat, mortar_layer)
 
 	# Top plate is at y=300, pointing towards -y
 	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
@@ -196,19 +203,19 @@ if __name__ == "__main__":
 
 	timestep = 1.0e-8
 	DEMSim.SetInitTimeStep(timestep)
-	DEMSim.SetMaxVelocity(1000.)
-	DEMSim.SetErrorOutVelocity(1000.)
+	DEMSim.SetMaxVelocity(40000.)
+	DEMSim.SetErrorOutVelocity(50000.)
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
 	DEMSim.Initialize()
 
-	# 1. phase: remove particles above the prism height 
-	print("\n 1. phase: remove particles above the prism height \n")
+	# 1. phase: waiting with a plate on top of the SlumpCone
+	print("\n 1. phase: waiting with a plate on top of the SlumpCone \n")
 
-	max_step_size = 1e-5
+	max_step_size = 5e-7
 
-	stepsize_increase_mult = 1.05
+	stepsize_increase_mult = 1.01
 	currframe = 0
 	t = 0.0
 	
@@ -223,6 +230,7 @@ if __name__ == "__main__":
 
 		if (t >= out_time):
 			print(f"============ Time {t} =============")
+			print(f"Current step size: {timestep}")
 			print(f"Outputting frame: {currframe}")
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
@@ -256,6 +264,9 @@ if __name__ == "__main__":
 	phase1_end = t
 	timestep=1e-8
 	stepsize_increase_mult = 1.01
+
+	DEMSim.DoDynamicsThenSync(0)
+	DEMSim.UpdateStepSize(timestep)
 	
 	# Disable contact between some entities and the particles
 	DEMSim.DisableContactBetweenFamilies(FIXED_FAM, 0)
