@@ -223,15 +223,15 @@ if __name__ == "__main__":
 	
 	step_num = 0
 
-	frame_time = 1. / 100.
+	frame_time = 1. / 20.
 	out_time = 0.
-	while t < 0.75:
+	while t < 5.0:
 		if (step_num % 20 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
 
 		if (t >= out_time):
-			print(f"============ Time {t} =============")
+			print(f"============ Time {t}, settling =============")
 			print(f"Current step size: {timestep}")
 			print(f"Outputting frame: {currframe}")
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
@@ -249,7 +249,8 @@ if __name__ == "__main__":
 			out_time += frame_time
 
 			ke = KE_finder.GetValue()
-			if (ke < 1e-3) and (step_num > 4000):
+			print(f"Kinetic energy: {ke}")
+			if (ke < 0.5) and (step_num > 4000):
 				print("Kinetic energy is low, finishing up the settling phase.")
 				break
 
@@ -273,13 +274,14 @@ if __name__ == "__main__":
 	# Disable contact between some entities and the particles
 	DEMSim.DisableContactBetweenFamilies(FIXED_FAM, 0)
 
-	while t < phase1_end + 9.5:
+	while t < phase1_end + 10.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
 
 		if (t >= out_time):
-			print(f"============ Time {t} =============")
+			print(f"============ Time {t}, slumping =============")
+			print(f"Current step size: {timestep}")
 			print(f"Outputting frame: {currframe}")
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
