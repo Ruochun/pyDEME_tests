@@ -65,41 +65,43 @@ do {
     XdirToDxDyDz(normal_dir, make_float3(0, 1, 0), Vx, Vy, Vz);
     // std::cout<<" Vy: "<<Vy<<" Vz: "<<Vz<<"\t";
 
-    R1 = (ARadius < 50.) ? ARadius : 50.;
-    R2 = (BRadius < 50.) ? BRadius : 50.;
-
     double delta = overlapDepth;
 
+    R1 = ARadius;
+    R2 = BRadius;
+
     if (ContactType == deme::SPHERE_SPHERE_CONTACT) {
-    /// Concrete - Concrete Interaction
-    // Contact of two DFC spheres
-    // center to center distance between 2 objects
-    L0ij = R1 + R2 - h;
-    Lij = abs(R1 + R2 - delta);
-    Rmin = DEME_MIN(R1, R2);
-    Rmax = DEME_MAX(R1, R2);
-    delta_rmin = delta / 2 * (2.0 * Rmax - delta) / Lij;
+        // Concrete - Concrete Interaction
+        // Contact of two DFC spheres
+        // center to center distance between 2 objects
+        L0ij = R1 + R2 - h;
+        Lij = abs(R1 + R2 - delta);
+        Rmin = DEME_MIN(R1, R2);
+        Rmax = DEME_MAX(R1, R2);
+        delta_rmin = delta / 2 * (2.0 * Rmax - delta) / Lij;
 
-    } else if (ContactType ==
-                deme::SPHERE_MESH_CONTACT) { /// COncrete-container
-                                            /// interaction
-    h = mortar_layer / 2.;
-    // sgmTmax=this->material->Get_sgmTmax()/2;
-    L0ij = R1 + R2 - h;
-    Lij = abs(R1 + R2 - delta);
-    Rmin = R1;
-    // Rmin=std::min(R1, R2);
-    Rmax = DEME_MAX(R1, R2);
-    delta_rmin = delta;
+    } else if (ContactType == deme::SPHERE_MESH_CONTACT) { 
+        // Concrete-container interaction
+        R2 = 0.;
+        h = mortar_layer / 2.;
+        // sgmTmax=this->material->Get_sgmTmax()/2;
+        L0ij = R1 + R2 - h;
+        Lij = abs(R1 + R2 - delta);
+        Rmin = R1;
+        // Rmin=std::min(R1, R2);
+        Rmax = DEME_MAX(R1, R2);
+        delta_rmin = delta;
 
-    } else { /// Fiber-container or another object- container interaction
-    h = mortar_layer / 2.;
-    // sgmTmax=this->material->Get_sgmTmax()/2;
-    L0ij = R1 + R2 - h;
-    Lij = abs(R1 + R2 - delta);
-    Rmin = DEME_MIN(R1, R2);
-    Rmax = DEME_MAX(R1, R2);
-    delta_rmin = delta / 2.;
+    } else { 
+        /// Concrete-analytical interaction
+        R2 = 0.;
+        h = mortar_layer / 2.;
+        // sgmTmax=this->material->Get_sgmTmax()/2;
+        L0ij = R1 + R2 - h;
+        Lij = abs(R1 + R2 - delta);
+        Rmin = R1;
+        Rmax = DEME_MAX(R1, R2);
+        delta_rmin = delta;
     }
 
     double ai = abs(Rmin - delta_rmin);
@@ -337,6 +339,6 @@ do {
     //   return {-force, torque};
 
     if (isnan(length(force))) {
-    printf("Force NaN!!!!\\n");
+    printf("Force NaN!!!!\n");
     }
 } while (0);

@@ -7,7 +7,7 @@ import os
 import pychrono as chrono
 
 # Concrete properties
-h_layer=4.0; 
+h_layer=4.0
 minD=5.0
 maxD=10.0
 cement=571
@@ -29,8 +29,8 @@ rho=cement*(1.0+WtoC+AtoC)*1E-12
 
 # Define material parameters of fresh concrete
 mortar_layer=h_layer
-ENm=2.0   # 4.0E-2;
-ENa=100
+ENm=2.0  # 4.0E-2;
+ENa=100 
 h=mortar_layer	
 alpha=0.25
 beta=0.5
@@ -38,7 +38,7 @@ np=1.0
 sgmTmax=2.0E-4
 sgmTau0=1E-7
 kappa0=100.
-eta_inf=2.0E-5
+eta_inf=2.0E-5 # can be used to slow down the pile collapse
 
 # Define fixed family
 FIXED_FAM = 10
@@ -52,7 +52,7 @@ lambda_init = 2.0
 def AddSlumpCone(sys, mat, density, radius, height, current_dir):
 	obj_file = current_dir + "/coni_100_50_300.obj"
 	SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
-	SlumpCone.SetMass(1e8)
+	SlumpCone.SetMass(1)
 	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
 	# SlumpCone.SetInitPos([0,133,0])
@@ -83,25 +83,42 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 	
 	my_templates = []
 	body_points_new = []
+	totVol = 0.0
+	Vols = []
+	radii = []
+	for particle in particles:	
+		radius=particle[4]/2+h_layer
+		radii.append(radius)
+		Vol = 4/3*chrono.CH_PI*pow(radius, 3)
+		# mass = rho/2*Vol
+		totVol += Vol
+		Vols.append(Vol)
+
+	rho_new = rho*specimenVol/totVol
+
+	print(f"Original rho: {rho}, new rho: {rho_new}")
+	i = 0
 	for particle in particles:
 		x_pos=particle[1]
 		y_pos=particle[2]
 		z_pos=particle[3]
+		radius=radii[i]
        
 		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
 		rotatedpos=csys.TransformPointLocalToParent(pos)
-		print("pos: ", pos, "\t", "rotated pos: ", rotatedpos)
-		
-		radius=particle[4]/2+h_layer
-		mass = rho/2*4/3*pow(radius, 3)*chrono.CH_PI
+		# print("pos: ", pos, "\t", "rotated pos: ", rotatedpos)
+		mass = rho_new * Vols[i]
 
-        # create templates for each sphere
+		# create templates for each sphere
 		my_templates.append(sys.LoadSphereType(
             mass,
             radius,
             mat
         ))
 		body_points_new.append([rotatedpos.x, rotatedpos.y, rotatedpos.z])
+
+		i += 1
+
 	# Add the particles to the system
 	added = sys.AddClumps(my_templates, body_points_new)
 	return sys.Track(added)
@@ -141,6 +158,7 @@ if __name__ == "__main__":
 
 	# Floor is at y=0, pointing towards +y
 	bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
+	# bottom_plane.SetFamily(FIXED_FAM)
 
 	cyl_radius=100
 	cyl_height=150
@@ -202,11 +220,12 @@ if __name__ == "__main__":
 	topPlate.SetFamily(FIXED_FAM)
 
 	KE_finder = DEMSim.CreateInspector("clump_kinetic_energy")
+	# maxZ_finder = DEMSim.CreateInspector("clump_max_z")
 
 	timestep = 1.0e-8
 	DEMSim.SetInitTimeStep(timestep)
-	DEMSim.SetMaxVelocity(40000.)
-	DEMSim.SetErrorOutVelocity(50000.)
+	DEMSim.SetMaxVelocity(400000.)
+	DEMSim.SetErrorOutVelocity(500000.)
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
@@ -296,6 +315,9 @@ if __name__ == "__main__":
 
 			currframe += 1
 			out_time += frame_time
+
+			# maxZ = maxZ_finder.GetValue()
+			# print(f"Highest point: {maxZ}")
 
 		DEMSim.DoDynamics(timestep)
 		t += timestep
