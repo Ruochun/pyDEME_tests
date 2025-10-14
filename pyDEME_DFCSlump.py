@@ -3,6 +3,7 @@ from DEME import HCPSampler
 
 import numpy as np
 import os
+import time
 
 import pychrono as chrono
 
@@ -213,7 +214,7 @@ if __name__ == "__main__":
 													)
 
 	# Read and load predefined particle list
-	ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2.dat", rho, floor_mat, mortar_layer)
+	particle_tracker = ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2.dat", rho, floor_mat, mortar_layer)
 
 	# Top plate is at y=300, pointing towards -y
 	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
@@ -293,7 +294,8 @@ if __name__ == "__main__":
 	# Disable contact between some entities and the particles
 	DEMSim.DisableContactBetweenFamilies(FIXED_FAM, 0)
 
-	while t < phase1_end + 10.:
+	start_time = time.time()
+	while t < phase1_end + 60.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
@@ -322,3 +324,14 @@ if __name__ == "__main__":
 		DEMSim.DoDynamics(timestep)
 		t += timestep
 		step_num += 1
+
+	end_time = time.time()
+	print(f"Total simulation time: {end_time - start_time} seconds")
+
+	# output the xyz of all particles to file
+	filename = os.path.join(out_dir, f"slump_va_final.csv")
+	xyz = particle_tracker.Positions()
+	with open(filename, "w") as f:
+		f.write("X,Y,Z\n")
+		for pos in xyz:
+			f.write(f"{pos[0]},{pos[1]},{pos[2]}\n")
