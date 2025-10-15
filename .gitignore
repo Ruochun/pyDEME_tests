@@ -3,3 +3,5 @@
 *.conda
 *Mixer.py*
 *.txt
+*.csv
+*.png

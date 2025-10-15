@@ -1,11 +1,20 @@
 import DEME
 from DEME import HCPSampler
 
-import numpy as np
+import numpy
 import os
 import time
 
 import pychrono as chrono
+
+# parse in a string
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
+parser.add_argument("--permutation", "-p", help="amount of random permutation to apply to the initial particles", type=float, default=-1.0)
+args = parser.parse_args()
+out_name = args.out_name
+permutation = args.permutation
 
 # Concrete properties
 h_layer=4.0
@@ -60,23 +69,59 @@ def AddSlumpCone(sys, mat, density, radius, height, current_dir):
 	SlumpCone.SetFamily(FIXED_FAM)
 	return sys.Track(SlumpCone)
 
-def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
+def ReadDFCparticles(sys, file_name, rho, mat, h_layer, permutation=-1.0):
 
 	particles = []
 
-	with open(file_name, "r") as f:
-		# read in a file (ignoring the lines with // comments)
-		for line in f:
-			if line.startswith("//"):
-				continue
-			parts = line.split()
-			if len(parts) == 5:
-				n = int(parts[0])
-				x = float(parts[1])
-				y = float(parts[2])
-				z = float(parts[3])
-				d = float(parts[4])
-				particles.append((n, x, y, z, d))
+	if len(file_name) == 1:
+
+		with open(file_name[0], "r") as f:
+			# read in a file (ignoring the lines with // comments)
+			for line in f:
+				if line.startswith("//"):
+					continue
+				parts = line.split()
+				if len(parts) == 5:
+					n = int(parts[0])
+					x = float(parts[1])
+					y = float(parts[2])
+					z = float(parts[3])
+					d = float(parts[4])
+					particles.append([n, x, y, z, d])
+
+
+	elif len(file_name) == 2:
+		i = 0
+		with open(file_name[0], "r") as f:
+			# read in a file (ignoring the lines with // comments)
+			for line in f:
+				if line.startswith("//"):
+					continue
+				parts = line.split()
+				if len(parts) == 3:
+					x = float(parts[0])
+					y = float(parts[1])
+					z = float(parts[2])
+					d = float(0)
+					particles.append([i, x, y, z, d])
+					i += 1
+
+		i = 0
+		with open(file_name[1], "r") as f:
+			# read in a file (ignoring the lines with // comments)
+			for line in f:
+				if line.startswith("//"):
+					continue
+				parts = line.split()
+				if len(parts) == 5:
+					d = float(parts[4])
+					particles[i][4] = d
+					i += 1
+		if i != len(particles):
+			raise ValueError("Number of particles in the two files do not match")
+
+	else:
+		raise ValueError("file_name must be a string or a list of two strings")
 
 	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	# ChVector3d t(0,0,0)
@@ -98,6 +143,19 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 	rho_new = rho*specimenVol/totVol
 
 	print(f"Original rho: {rho}, new rho: {rho_new}")
+
+	# permute particles if needed
+	if permutation > 0.0:
+		each_permutation = permutation / len(particles)
+		# generate random normalized vector in 3D
+		for i in range(len(particles)):
+			random_dir_3D = numpy.random.rand(3)
+			random_dir_3D /= numpy.linalg.norm(random_dir_3D)
+			# move each particle along this direction by a distance of each_permutation
+			particles[i][1] += random_dir_3D[0] * each_permutation 
+			particles[i][2] += random_dir_3D[1] * each_permutation
+			particles[i][3] += random_dir_3D[2] * each_permutation
+
 	i = 0
 	for particle in particles:
 		x_pos=particle[1]
@@ -106,8 +164,9 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		radius=radii[i]
        
 		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
-		rotatedpos=csys.TransformPointLocalToParent(pos)
-		# print("pos: ", pos, "\t", "rotated pos: ", rotatedpos)
+		if len(file_name) == 1:
+			pos=csys.TransformPointLocalToParent(pos)
+		# print("pos: ", pos, "\t", "rotated pos: ", pos)
 		mass = rho_new * Vols[i]
 
 		# create templates for each sphere
@@ -116,7 +175,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
             radius,
             mat
         ))
-		body_points_new.append([rotatedpos.x, rotatedpos.y, rotatedpos.z])
+		body_points_new.append([pos.x, pos.y, pos.z])
 
 		i += 1
 
@@ -147,6 +206,7 @@ if __name__ == "__main__":
 	DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
 	DEMSim.SetJitifyClumpTemplates(False)
 	DEMSim.SetJitifyMassProperties(False)
+	DEMSim.UseCubForceCollection()
 	DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
 	DEMSim.SetErrorOutAvgContacts(250)
 
@@ -214,7 +274,8 @@ if __name__ == "__main__":
 													)
 
 	# Read and load predefined particle list
-	particle_tracker = ReadDFCparticles(DEMSim, current_dir + "/DFCgeo000-data-particles-SCC-2.dat", rho, floor_mat, mortar_layer)
+	particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/slump_va_A076800.dat", current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer, permutation)
+	# particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer)
 
 	# Top plate is at y=300, pointing towards -y
 	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
@@ -245,6 +306,8 @@ if __name__ == "__main__":
 
 	frame_time = 1. / 20.
 	out_time = 0.
+
+
 	while t < 5.0:
 		if (step_num % 20 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
@@ -277,7 +340,6 @@ if __name__ == "__main__":
 		DEMSim.DoDynamics(timestep)
 		t += timestep
 		step_num += 1
-
     
 
 	# 2. phase: remove containers and allow flow 
@@ -299,6 +361,9 @@ if __name__ == "__main__":
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
+			# ke = KE_finder.GetValue()
+			# print(f"Kinetic energy: {ke}")
+
 
 		if (t >= out_time):
 			print(f"============ Time {t}, slumping =============")
@@ -329,9 +394,9 @@ if __name__ == "__main__":
 	print(f"Total simulation time: {end_time - start_time} seconds")
 
 	# output the xyz of all particles to file
-	filename = os.path.join(out_dir, f"slump_va_final.csv")
+	filename = os.path.join(out_dir, out_name)
 	xyz = particle_tracker.Positions()
 	with open(filename, "w") as f:
-		f.write("X,Y,Z\n")
+		f.write("# X,Y,Z\n")
 		for pos in xyz:
 			f.write(f"{pos[0]},{pos[1]},{pos[2]}\n")
