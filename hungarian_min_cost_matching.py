@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 # number of repeated slumping runs
 num_runs = 10
 # number of permutated runs
-num_permutations = 5
+num_permutations = 10
 
 diff_runs = []
+total_dist = []
 # compared all runs wrt to No.1
 A = np.loadtxt(f"slump_va_final_1.csv", delimiter=',', comments='#')
+total_dist.append(np.sum(np.linalg.norm(A, axis=1)))
 for i in range(2, num_runs+1):
     B = np.loadtxt(f"slump_va_final_{i}.csv", delimiter=',', comments='#')
 
@@ -18,10 +20,15 @@ for i in range(2, num_runs+1):
     row_ind, col_ind = linear_sum_assignment(cost)
     total_distance = cost[row_ind, col_ind].sum()
     diff_runs.append(total_distance)
+    dist = 0.
+    for p in B:
+        dist += np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
+    total_dist.append(dist)
 
     # print(f"The mapping is {list(zip(row_ind, col_ind))}")
 
 print(f"The total distances among runs are {diff_runs}")
+print(f"The total distances of all particles is {total_dist}")
 
 diff_permu = []
 # compared all permutated runs wrt to No.1
