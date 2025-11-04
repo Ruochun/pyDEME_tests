@@ -306,6 +306,10 @@ if __name__ == "__main__":
 
 	frame_time = 1. / 20.
 	out_time = 0.
+	
+	# Track positions of ~50 particles throughout simulation
+	num_tracked_particles = min(50, len(particle_tracker))
+	trajectory_data = []  # Will store [time, particle_id, x, y, z] for each frame
 
 
 	while t < 5.0:
@@ -327,6 +331,11 @@ if __name__ == "__main__":
 			# DEMSim.ShowThreadCollaborationStats()
 			# DEMSim.ShowMemStats()
 			# DEMSim.PrintKinematicScratchSpaceUsage()
+			
+			# Record positions of tracked particles
+			positions = particle_tracker.Positions()
+			for i in range(num_tracked_particles):
+				trajectory_data.append([t, i, positions[i][0], positions[i][1], positions[i][2]])
 
 			currframe += 1
 			out_time += frame_time
@@ -379,6 +388,11 @@ if __name__ == "__main__":
 			# DEMSim.ShowThreadCollaborationStats()
 			# DEMSim.ShowMemStats()
 			# DEMSim.PrintKinematicScratchSpaceUsage()
+			
+			# Record positions of tracked particles
+			positions = particle_tracker.Positions()
+			for i in range(num_tracked_particles):
+				trajectory_data.append([t, i, positions[i][0], positions[i][1], positions[i][2]])
 
 			currframe += 1
 			out_time += frame_time
@@ -400,3 +414,12 @@ if __name__ == "__main__":
 		f.write("# X,Y,Z\n")
 		for pos in xyz:
 			f.write(f"{pos[0]},{pos[1]},{pos[2]}\n")
+	
+	# Save trajectory data for tracked particles
+	trajectory_filename = os.path.join(out_dir, "particle_trajectories.csv")
+	print(f"Saving trajectory data for {num_tracked_particles} particles to {trajectory_filename}")
+	with open(trajectory_filename, "w") as f:
+		f.write("time,particle_id,x,y,z\n")
+		for data_point in trajectory_data:
+			f.write(f"{data_point[0]},{data_point[1]},{data_point[2]},{data_point[3]},{data_point[4]}\n")
+	print(f"Trajectory data saved. Total data points: {len(trajectory_data)}")
