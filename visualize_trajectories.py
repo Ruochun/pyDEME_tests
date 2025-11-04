@@ -22,8 +22,11 @@ Examples:
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+
+# Configuration constants
+MAX_LEGEND_PARTICLES = 20  # Maximum particles to show in legend before simplifying
+DEFAULT_TIME_PLOT_PARTICLES = 10  # Default number of particles for time evolution plots
 
 def load_trajectory_data(filename):
     """Load trajectory data from CSV file."""
@@ -85,7 +88,7 @@ def plot_3d_trajectories(df, particle_ids=None, output_file=None):
     ax.set_title('Particle Trajectories During Slump Test\n(circles=start, squares=end)')
     
     # Add legend (limit to avoid clutter)
-    if len(plot_particle_ids) <= 20:
+    if len(plot_particle_ids) <= MAX_LEGEND_PARTICLES:
         ax.legend(loc='upper left', fontsize=8)
     else:
         ax.text2D(0.02, 0.98, f'Showing {len(plot_particle_ids)} particles', 
@@ -157,7 +160,7 @@ def plot_2d_projections(df, particle_ids=None, output_file=None):
     axes[2].set_ylabel('Z Position')
     axes[2].set_title('YZ Projection (Side View)')
     axes[2].grid(True, alpha=0.3)
-    if len(plot_particle_ids) <= 10:
+    if len(plot_particle_ids) <= DEFAULT_TIME_PLOT_PARTICLES:
         axes[2].legend(fontsize=8)
     
     plt.suptitle(f'Particle Trajectory Projections ({len(plot_particle_ids)} particles)')
@@ -187,7 +190,7 @@ def plot_time_evolution(df, particle_ids=None, output_file=None):
     if particle_ids is not None:
         plot_particle_ids = [pid for pid in particle_ids if pid in all_particle_ids]
     else:
-        plot_particle_ids = sorted(all_particle_ids)[:10]  # Limit to first 10 for clarity
+        plot_particle_ids = sorted(all_particle_ids)[:DEFAULT_TIME_PLOT_PARTICLES]  # Limit for clarity
     
     # Use a colormap for different particles
     colors = plt.cm.rainbow(np.linspace(0, 1, len(plot_particle_ids)))

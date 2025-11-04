@@ -127,7 +127,7 @@ The trajectory tracking has minimal performance impact as it only reads particle
 
 To track different particles or modify the tracking behavior:
 
-1. **Change number of tracked particles**: Modify `num_tracked_particles = min(50, len(particle_tracker))` on line ~311
+1. **Change number of tracked particles**: Modify the line `num_tracked_particles = min(50, len(particle_tracker))` in the initialization section before the main simulation loop
 
 2. **Track specific particles**: Instead of tracking the first N particles, you can modify the loop to track specific particle IDs:
    ```python
