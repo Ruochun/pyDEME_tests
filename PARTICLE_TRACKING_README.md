@@ -40,7 +40,7 @@ time,particle_id,x,y,z
 
 Run the simulation as before:
 ```bash
-python pyDEME_DFCSlump.py --out_name output.txt
+python pyDEME_DFCSlump.py --out_name output.txt -s 
 ```
 
 This will create the output directory `OUT_slump_V1/` containing:
