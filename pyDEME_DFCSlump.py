@@ -10,11 +10,13 @@ import pychrono as chrono
 # parse in a string
 import argparse
 parser = argparse.ArgumentParser()
+# parser.add_argument("--in_name", "-i", help="input file name(s) for particles", type=str, nargs='+', required=True)
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
-parser.add_argument("--permutation", "-p", help="amount of random permutation to apply to the initial particles", type=float, default=-1.0)
+parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
 args = parser.parse_args()
+# in_name = args.in_name
 out_name = args.out_name
-permutation = args.permutation
+settle = args.settle
 
 # Concrete properties
 h_layer=4.0
@@ -69,7 +71,7 @@ def AddSlumpCone(sys, mat, density, radius, height, current_dir):
 	SlumpCone.SetFamily(FIXED_FAM)
 	return sys.Track(SlumpCone)
 
-def ReadDFCparticles(sys, file_name, rho, mat, h_layer, permutation=-1.0):
+def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 	particles = []
 
@@ -144,17 +146,17 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer, permutation=-1.0):
 
 	print(f"Original rho: {rho}, new rho: {rho_new}")
 
-	# permute particles if needed
-	if permutation > 0.0:
-		each_permutation = permutation / len(particles)
-		# generate random normalized vector in 3D
-		for i in range(len(particles)):
-			random_dir_3D = numpy.random.rand(3)
-			random_dir_3D /= numpy.linalg.norm(random_dir_3D)
-			# move each particle along this direction by a distance of each_permutation
-			particles[i][1] += random_dir_3D[0] * each_permutation 
-			particles[i][2] += random_dir_3D[1] * each_permutation
-			particles[i][3] += random_dir_3D[2] * each_permutation
+	# # permute particles if needed
+	# if permutation > 0.0:
+	# 	each_permutation = permutation / len(particles)
+	# 	# generate random normalized vector in 3D
+	# 	for i in range(len(particles)):
+	# 		random_dir_3D = numpy.random.rand(3)
+	# 		random_dir_3D /= numpy.linalg.norm(random_dir_3D)
+	# 		# move each particle along this direction by a distance of each_permutation
+	# 		particles[i][1] += random_dir_3D[0] * each_permutation 
+	# 		particles[i][2] += random_dir_3D[1] * each_permutation
+	# 		particles[i][3] += random_dir_3D[2] * each_permutation
 
 	i = 0
 	for particle in particles:
@@ -274,7 +276,7 @@ if __name__ == "__main__":
 													)
 
 	# Read and load predefined particle list
-	particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/slump_va_A076800.dat", current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer, permutation)
+	particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/slump_va_A076800.dat", current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer)
 	# particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer)
 
 	# Top plate is at y=300, pointing towards -y
@@ -293,9 +295,6 @@ if __name__ == "__main__":
 	# DEMSim.DisableAdaptiveUpdateFreq()
 	DEMSim.Initialize()
 
-	# 1. phase: waiting with a plate on top of the SlumpCone
-	print("\n 1. phase: waiting with a plate on top of the SlumpCone \n")
-
 	max_step_size = 1e-5
 
 	stepsize_increase_mult = 1.01
@@ -306,40 +305,53 @@ if __name__ == "__main__":
 
 	frame_time = 1. / 20.
 	out_time = 0.
+	
+	# Track positions of ~50 particles throughout simulation
+	num_tracked_particles = 50
+	trajectory_data = []  # Will store [time, particle_id, x, y, z] for each frame
 
+	if settle:
 
-	while t < 5.0:
-		if (step_num % 20 == 0) and (timestep < max_step_size):
-			timestep = min(timestep*stepsize_increase_mult,max_step_size)
-			DEMSim.UpdateStepSize(timestep)
+		# 1. phase: waiting with a plate on top of the SlumpCone
+		print("\n 1. phase: waiting with a plate on top of the SlumpCone \n")
 
-		if (t >= out_time):
-			print(f"============ Time {t}, settling =============")
-			print(f"Current step size: {timestep}")
-			print(f"Outputting frame: {currframe}")
-			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
-			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
-			DEMSim.WriteSphereFile(filename)
-			DEMSim.WriteMeshFile(meshname)
-			print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
-			# print(f"Bin num: {DEMSim.GetBinNum()}")
-			# print(f"Bin size: {DEMSim.GetBinSize()}")
-			# DEMSim.ShowThreadCollaborationStats()
-			# DEMSim.ShowMemStats()
-			# DEMSim.PrintKinematicScratchSpaceUsage()
+		while t < 5.0:
+			if (step_num % 20 == 0) and (timestep < max_step_size):
+				timestep = min(timestep*stepsize_increase_mult,max_step_size)
+				DEMSim.UpdateStepSize(timestep)
 
-			currframe += 1
-			out_time += frame_time
+			if (t >= out_time):
+				print(f"============ Time {t}, settling =============")
+				print(f"Current step size: {timestep}")
+				print(f"Outputting frame: {currframe}")
+				filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
+				meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
+				DEMSim.WriteSphereFile(filename)
+				DEMSim.WriteMeshFile(meshname)
+				print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
+				# print(f"Bin num: {DEMSim.GetBinNum()}")
+				# print(f"Bin size: {DEMSim.GetBinSize()}")
+				# DEMSim.ShowThreadCollaborationStats()
+				# DEMSim.ShowMemStats()
+				# DEMSim.PrintKinematicScratchSpaceUsage()
+				
+				# Record positions of tracked particles
+				positions = particle_tracker.Positions()
+				for i in range(num_tracked_particles):
+					trajectory_data.append([t, i, positions[i][0], positions[i][1], positions[i][2]])
 
-			ke = KE_finder.GetValue()
-			print(f"Kinetic energy: {ke}")
-			if (ke < 0.5) and (step_num > 4000):
-				print("Kinetic energy is low, finishing up the settling phase.")
-				break
+				currframe += 1
+				out_time += frame_time
 
-		DEMSim.DoDynamics(timestep)
-		t += timestep
-		step_num += 1
+				ke = KE_finder.GetValue()
+				print(f"Kinetic energy: {ke}")
+				if (ke < 0.5) and (step_num > 4000):
+					print("Kinetic energy is low, finishing up the settling phase.")
+					break
+
+			DEMSim.DoDynamics(timestep)
+			t += timestep
+			step_num += 1
     
 
 	# 2. phase: remove containers and allow flow 
@@ -379,6 +391,11 @@ if __name__ == "__main__":
 			# DEMSim.ShowThreadCollaborationStats()
 			# DEMSim.ShowMemStats()
 			# DEMSim.PrintKinematicScratchSpaceUsage()
+			
+			# Record positions of tracked particles
+			positions = particle_tracker.Positions()
+			for i in range(num_tracked_particles):
+				trajectory_data.append([t, i, positions[i][0], positions[i][1], positions[i][2]])
 
 			currframe += 1
 			out_time += frame_time
@@ -400,3 +417,12 @@ if __name__ == "__main__":
 		f.write("# X,Y,Z\n")
 		for pos in xyz:
 			f.write(f"{pos[0]},{pos[1]},{pos[2]}\n")
+	
+	# Save trajectory data for tracked particles
+	trajectory_filename = os.path.join(out_dir, "particle_trajectories.csv")
+	print(f"Saving trajectory data for {num_tracked_particles} particles to {trajectory_filename}")
+	with open(trajectory_filename, "w") as f:
+		f.write("time,particle_id,x,y,z\n")
+		for data_point in trajectory_data:
+			f.write(f"{data_point[0]},{data_point[1]},{data_point[2]},{data_point[3]},{data_point[4]}\n")
+	print(f"Trajectory data saved. Total data points: {len(trajectory_data)}")
