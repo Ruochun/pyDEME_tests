@@ -156,46 +156,63 @@ as a fraction of the total motion. Lower values indicate more reproducible resul
 
 ## Deviation Evolution Plots
 
-In addition to the numerical metrics, the tool automatically generates **deviation evolution plots** for each comparison run. These plots show how the deviation from baseline changes over simulation time for all tracked particles.
+In addition to the numerical metrics, the tool automatically generates **relative deviation evolution plots** for each comparison run. These plots show how the **relative deviation** (deviation normalized by cumulative path length) from baseline changes over simulation time for all tracked particles.
 
 ### Plot Features
 
 Each plot contains:
 - **~50 curves**: One for each tracked particle
 - **X-axis**: Simulation time (seconds)
-- **Y-axis**: Trajectory deviation from baseline (units)
+- **Y-axis**: Relative deviation (deviation / cumulative path length)
 - **Color coding**: Different colors for each particle (with transparency when many particles)
 - **Automatic saving**: Saved as `deviation_evolution_run{N}_{filename}.png`
 
+### Why Relative Deviation?
+
+By normalizing the deviation by the **cumulative path length** at each time point, we can:
+- Compare particles with different trajectory lengths on equal footing
+- Identify whether all particles show similar relative stochasticity
+- Determine if GPU effects are proportional to distance traveled
+- See if certain particles are inherently more sensitive to numerical errors
+
 ### Example Plot
 
-![Deviation Evolution Example](deviation_evolution_example.png)
+![Relative Deviation Evolution Example](https://github.com/user-attachments/assets/a61d9046-53bd-4a44-bc9b-ad973fa9d4c8)
 
 The plot shows:
-- How deviation evolves throughout the simulation
-- Whether deviation accumulates over time or remains stable
+- How relative deviation evolves throughout the simulation
+- Whether all particles converge to similar relative deviation values
 - Individual particle behavior vs. collective trends
-- Time periods with higher or lower stochasticity
+- Time periods with higher or lower stochasticity (normalized by distance traveled)
 
-### Interpreting Deviation Evolution
+### Interpreting Relative Deviation Evolution
 
 **Patterns to look for:**
 
-1. **Increasing trend**: Deviation grows over time
-   - May indicate accumulation of numerical errors
-   - Consider shorter time steps or higher precision
+1. **Decreasing trend**: Relative deviation decreases over time
+   - Deviation is growing slower than path length
+   - Good sign - stochasticity is bounded relative to motion
+   - Common pattern as particles settle into stable flow
 
-2. **Stable/plateau**: Deviation reaches a steady level
-   - Good sign - variations are bounded
-   - Stochasticity is manageable
+2. **Stable/plateau**: Relative deviation reaches a steady level
+   - Deviation grows proportionally to path length
+   - Consistent stochasticity throughout simulation
+   - Predictable GPU effects
 
-3. **Oscillating**: Deviation fluctuates
-   - May reflect physical phenomena (collisions, flow patterns)
-   - Normal for complex particle interactions
+3. **Increasing trend**: Relative deviation grows over time
+   - Deviation accumulates faster than path length
+   - May indicate growing numerical errors
+   - Consider investigating specific time periods or particles
 
-4. **Outlier particles**: Few curves significantly higher
-   - Some particles more sensitive to initial conditions
-   - May need investigation of specific particle behavior
+4. **Convergence of curves**: All particles show similar relative deviation
+   - GPU stochasticity affects all particles proportionally
+   - Validates that effects are not particle-specific
+   - Good reproducibility characteristics
+
+5. **Outlier particles**: Few curves significantly different
+   - Some particles more sensitive to initial conditions or contact patterns
+   - May need investigation of specific particle interactions
+   - Could indicate numerical sensitivity in certain configurations
 
 ### Plot File Naming
 

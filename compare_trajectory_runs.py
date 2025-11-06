@@ -207,20 +207,77 @@ def compute_trajectory_deviation(baseline_traj: List[Tuple[float, float, float, 
     
     return avg_deviation, max_deviation, len(time_points)
 
+def compute_cumulative_path_length_at_time(trajectory: List[Tuple[float, float, float, float]], 
+                                          target_time: float) -> float:
+    """
+    Compute cumulative path length traveled up to a specific time.
+    
+    Args:
+        trajectory: List of (time, x, y, z) tuples
+        target_time: Time up to which to compute path length
+        
+    Returns:
+        Cumulative path length traveled up to target_time
+    """
+    if not trajectory or len(trajectory) < 2:
+        return 0.0
+    
+    cumulative_length = 0.0
+    
+    # Find all trajectory segments up to target_time
+    for i in range(1, len(trajectory)):
+        t_prev = trajectory[i-1][0]
+        t_curr = trajectory[i][0]
+        
+        if t_curr <= target_time:
+            # Full segment is before target_time
+            prev_pos = trajectory[i-1][1:4]
+            curr_pos = trajectory[i][1:4]
+            
+            dx = curr_pos[0] - prev_pos[0]
+            dy = curr_pos[1] - prev_pos[1]
+            dz = curr_pos[2] - prev_pos[2]
+            
+            cumulative_length += math.sqrt(dx**2 + dy**2 + dz**2)
+        elif t_prev < target_time < t_curr:
+            # Partial segment - interpolate position at target_time
+            prev_pos = trajectory[i-1][1:4]
+            curr_pos = trajectory[i][1:4]
+            
+            # Interpolate position at target_time
+            alpha = (target_time - t_prev) / (t_curr - t_prev) if (t_curr - t_prev) > TIME_EPSILON else 0.0
+            interp_x = prev_pos[0] + alpha * (curr_pos[0] - prev_pos[0])
+            interp_y = prev_pos[1] + alpha * (curr_pos[1] - prev_pos[1])
+            interp_z = prev_pos[2] + alpha * (curr_pos[2] - prev_pos[2])
+            
+            dx = interp_x - prev_pos[0]
+            dy = interp_y - prev_pos[1]
+            dz = interp_z - prev_pos[2]
+            
+            cumulative_length += math.sqrt(dx**2 + dy**2 + dz**2)
+            break
+        else:
+            # Segment is after target_time, stop
+            break
+    
+    return cumulative_length
+
 def compute_trajectory_deviation_evolution(baseline_traj: List[Tuple[float, float, float, float]], 
                                           comparison_traj: List[Tuple[float, float, float, float]]) -> Tuple[List[float], List[float]]:
     """
-    Compute deviation evolution over time between two trajectories.
+    Compute relative deviation evolution over time between two trajectories.
     
-    This function returns the deviation at each time point, allowing for
-    visualization of how deviation changes over the simulation.
+    This function returns the relative deviation (deviation / cumulative path length)
+    at each time point, allowing visualization of how relative deviation changes
+    over the simulation. This normalizes the deviation by how much the particle
+    has traveled, making it easier to compare particles with different path lengths.
     
     Args:
         baseline_traj: Baseline trajectory (time, x, y, z)
         comparison_traj: Comparison trajectory (time, x, y, z)
         
     Returns:
-        Tuple of (time_points, deviations) where both are lists of same length
+        Tuple of (time_points, relative_deviations) where both are lists of same length
     """
     if not baseline_traj or not comparison_traj:
         return [], []
@@ -246,20 +303,32 @@ def compute_trajectory_deviation_evolution(baseline_traj: List[Tuple[float, floa
     if not time_points:
         return [], []
     
-    # Compute deviations at each time point
-    deviations = []
+    # Compute relative deviations at each time point
+    relative_deviations = []
     for t in time_points:
         pos1 = interpolate_trajectory_at_time(baseline_traj, t)
         pos2 = interpolate_trajectory_at_time(comparison_traj, t)
         
+        # Compute absolute deviation
         dx = pos2[0] - pos1[0]
         dy = pos2[1] - pos1[1]
         dz = pos2[2] - pos1[2]
         
         deviation = math.sqrt(dx**2 + dy**2 + dz**2)
-        deviations.append(deviation)
+        
+        # Compute cumulative path length in baseline trajectory up to time t
+        cumulative_length = compute_cumulative_path_length_at_time(baseline_traj, t)
+        
+        # Compute relative deviation (avoid division by zero)
+        if cumulative_length > TIME_EPSILON:
+            relative_deviation = deviation / cumulative_length
+        else:
+            # At the very start, use a small value or skip
+            relative_deviation = 0.0
+        
+        relative_deviations.append(relative_deviation)
     
-    return time_points, deviations
+    return time_points, relative_deviations
 
 def plot_deviation_evolution(baseline_trajs: Dict[int, List], 
                              comparison_trajs: Dict[int, List],
@@ -267,10 +336,12 @@ def plot_deviation_evolution(baseline_trajs: Dict[int, List],
                              run_name: str,
                              output_file: str) -> None:
     """
-    Plot deviation evolution over time for all matched particles.
+    Plot relative deviation evolution over time for all matched particles.
     
-    Creates a plot with one curve per particle showing how deviation from
-    baseline changes throughout the simulation.
+    Creates a plot with one curve per particle showing how relative deviation
+    (deviation / cumulative path length) from baseline changes throughout the simulation.
+    This allows comparison of particles with different trajectory lengths by normalizing
+    the deviation by the distance traveled.
     
     Args:
         baseline_trajs: Baseline trajectories {particle_id: [(time, x, y, z), ...]}
@@ -285,7 +356,7 @@ def plot_deviation_evolution(baseline_trajs: Dict[int, List],
     num_particles = len(matching)
     colors = plt.cm.rainbow(np.linspace(0, 1, num_particles))
     
-    max_deviation = 0.0
+    max_relative_deviation = 0.0
     max_time = 0.0
     
     # Plot deviation evolution for each matched particle
@@ -293,30 +364,30 @@ def plot_deviation_evolution(baseline_trajs: Dict[int, List],
         baseline_traj = baseline_trajs[baseline_pid]
         comp_traj = comparison_trajs[comp_pid]
         
-        time_points, deviations = compute_trajectory_deviation_evolution(baseline_traj, comp_traj)
+        time_points, relative_deviations = compute_trajectory_deviation_evolution(baseline_traj, comp_traj)
         
-        if time_points and deviations:
+        if time_points and relative_deviations:
             # Plot with alpha for transparency when many curves
             alpha = 0.3 if num_particles > 20 else 0.6
-            plt.plot(time_points, deviations, color=colors[idx], alpha=alpha, linewidth=1.0)
+            plt.plot(time_points, relative_deviations, color=colors[idx], alpha=alpha, linewidth=1.0)
             
             # Track maximum values for axis scaling
-            if deviations:
-                max_deviation = max(max_deviation, max(deviations))
+            if relative_deviations:
+                max_relative_deviation = max(max_relative_deviation, max(relative_deviations))
             if time_points:
                 max_time = max(max_time, max(time_points))
     
     plt.xlabel('Simulation Time (s)', fontsize=12)
-    plt.ylabel('Trajectory Deviation from Baseline (units)', fontsize=12)
-    plt.title(f'Particle Trajectory Deviation Evolution - {run_name}\n({num_particles} particles)', fontsize=14)
+    plt.ylabel('Relative Deviation (deviation / cumulative path length)', fontsize=12)
+    plt.title(f'Particle Trajectory Relative Deviation Evolution - {run_name}\n({num_particles} particles)', fontsize=14)
     plt.grid(True, alpha=0.3)
     
     # Add some padding to the y-axis
-    if max_deviation > 0:
-        plt.ylim(0, max_deviation * 1.1)
+    if max_relative_deviation > 0:
+        plt.ylim(0, max_relative_deviation * 1.1)
     
     # Add text annotation
-    plt.text(0.02, 0.98, f'Each curve represents one particle\nShowing deviation from baseline over time', 
+    plt.text(0.02, 0.98, f'Each curve represents one particle\nShowing relative deviation (normalized by cumulative path length)', 
              transform=plt.gca().transAxes, fontsize=10, verticalalignment='top',
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
