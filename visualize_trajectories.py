@@ -23,6 +23,7 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
 # Configuration constants
 MAX_LEGEND_PARTICLES = 20  # Maximum particles to show in legend before simplifying
@@ -257,7 +258,7 @@ def main():
             particle_ids = [int(pid.strip()) for pid in args.particles.split(',')]
         except ValueError:
             print("Error: Particle IDs must be comma-separated integers")
-            return
+            return 1
     
     # Load data
     try:
@@ -267,10 +268,10 @@ def main():
         print(f"Time range: {df['time'].min():.3f} to {df['time'].max():.3f}")
     except FileNotFoundError:
         print(f"Error: File {args.input} not found")
-        return
+        return 1
     except Exception as e:
         print(f"Error loading data: {e}")
-        return
+        return 1
     
     # Generate plots
     if args.plot_type in ['3d', 'all']:
@@ -284,6 +285,8 @@ def main():
     if args.plot_type in ['time', 'all']:
         output_time = args.output if args.output and args.plot_type == 'time' else None
         plot_time_evolution(df, particle_ids, output_time)
+    
+    return 0
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
