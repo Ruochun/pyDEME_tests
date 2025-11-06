@@ -19,6 +19,7 @@ try:
         calculate_path_length,
         interpolate_trajectory_at_time,
         compute_trajectory_deviation,
+        compute_trajectory_deviation_evolution,
         match_particles_by_initial_position
     )
 except ImportError as e:
@@ -282,6 +283,42 @@ def test_relative_deviation():
     print("✓ Relative deviation test passed")
     return True
 
+def test_deviation_evolution():
+    """Test deviation evolution computation."""
+    print("Testing deviation evolution computation...")
+    
+    # Create two trajectories with known deviations
+    traj1 = [
+        (0.0, 0.0, 0.0, 0.0),
+        (1.0, 1.0, 0.0, 0.0),
+        (2.0, 2.0, 0.0, 0.0)
+    ]
+    
+    # Trajectory 2 has constant offset of 0.5 in y
+    traj2 = [
+        (0.0, 0.0, 0.5, 0.0),
+        (1.0, 1.0, 0.5, 0.0),
+        (2.0, 2.0, 0.5, 0.0)
+    ]
+    
+    time_points, deviations = compute_trajectory_deviation_evolution(traj1, traj2)
+    
+    # Should have 3 time points
+    assert len(time_points) == 3, f"Expected 3 time points, got {len(time_points)}"
+    assert len(deviations) == 3, f"Expected 3 deviations, got {len(deviations)}"
+    
+    # All deviations should be approximately 0.5 (constant offset)
+    for dev in deviations:
+        assert abs(dev - 0.5) < 1e-6, f"Expected deviation ~0.5, got {dev}"
+    
+    # Time points should match input times
+    assert abs(time_points[0] - 0.0) < 1e-6, f"First time point incorrect: {time_points[0]}"
+    assert abs(time_points[1] - 1.0) < 1e-6, f"Second time point incorrect: {time_points[1]}"
+    assert abs(time_points[2] - 2.0) < 1e-6, f"Third time point incorrect: {time_points[2]}"
+    
+    print("✓ Deviation evolution test passed")
+    return True
+
 def run_all_tests():
     """Run all tests."""
     print("=" * 80)
@@ -296,7 +333,8 @@ def run_all_tests():
         test_compute_trajectory_deviation,
         test_match_particles,
         test_integration,
-        test_relative_deviation
+        test_relative_deviation,
+        test_deviation_evolution
     ]
     
     passed = 0

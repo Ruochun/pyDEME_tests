@@ -26,6 +26,7 @@ import csv
 import math
 import sys
 import glob
+import os
 from typing import Dict, List, Tuple
 
 # Check for required dependencies
@@ -39,6 +40,12 @@ try:
     from scipy.optimize import linear_sum_assignment
 except ImportError:
     print("Error: scipy is required. Install it with: pip install scipy")
+    sys.exit(1)
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    print("Error: matplotlib is required. Install it with: pip install matplotlib")
     sys.exit(1)
 
 def load_trajectories(filename: str) -> Dict[int, List[Tuple[float, float, float, float]]]:
@@ -200,6 +207,125 @@ def compute_trajectory_deviation(baseline_traj: List[Tuple[float, float, float, 
     
     return avg_deviation, max_deviation, len(time_points)
 
+def compute_trajectory_deviation_evolution(baseline_traj: List[Tuple[float, float, float, float]], 
+                                          comparison_traj: List[Tuple[float, float, float, float]]) -> Tuple[List[float], List[float]]:
+    """
+    Compute deviation evolution over time between two trajectories.
+    
+    This function returns the deviation at each time point, allowing for
+    visualization of how deviation changes over the simulation.
+    
+    Args:
+        baseline_traj: Baseline trajectory (time, x, y, z)
+        comparison_traj: Comparison trajectory (time, x, y, z)
+        
+    Returns:
+        Tuple of (time_points, deviations) where both are lists of same length
+    """
+    if not baseline_traj or not comparison_traj:
+        return [], []
+    
+    # Get common time range
+    t_start = max(baseline_traj[0][0], comparison_traj[0][0])
+    t_end = min(baseline_traj[-1][0], comparison_traj[-1][0])
+    
+    if t_start >= t_end:
+        return [], []
+    
+    # Collect all unique time points from both trajectories
+    time_points = set()
+    for t, _, _, _ in baseline_traj:
+        if t_start <= t <= t_end:
+            time_points.add(t)
+    for t, _, _, _ in comparison_traj:
+        if t_start <= t <= t_end:
+            time_points.add(t)
+    
+    time_points = sorted(time_points)
+    
+    if not time_points:
+        return [], []
+    
+    # Compute deviations at each time point
+    deviations = []
+    for t in time_points:
+        pos1 = interpolate_trajectory_at_time(baseline_traj, t)
+        pos2 = interpolate_trajectory_at_time(comparison_traj, t)
+        
+        dx = pos2[0] - pos1[0]
+        dy = pos2[1] - pos1[1]
+        dz = pos2[2] - pos1[2]
+        
+        deviation = math.sqrt(dx**2 + dy**2 + dz**2)
+        deviations.append(deviation)
+    
+    return time_points, deviations
+
+def plot_deviation_evolution(baseline_trajs: Dict[int, List], 
+                             comparison_trajs: Dict[int, List],
+                             matching: Dict[int, int],
+                             run_name: str,
+                             output_file: str) -> None:
+    """
+    Plot deviation evolution over time for all matched particles.
+    
+    Creates a plot with one curve per particle showing how deviation from
+    baseline changes throughout the simulation.
+    
+    Args:
+        baseline_trajs: Baseline trajectories {particle_id: [(time, x, y, z), ...]}
+        comparison_trajs: Comparison trajectories
+        matching: Dictionary mapping baseline particle IDs to comparison particle IDs
+        run_name: Name of the comparison run for plot title
+        output_file: Path to save the plot
+    """
+    plt.figure(figsize=(12, 8))
+    
+    # Use a colormap for different particles
+    num_particles = len(matching)
+    colors = plt.cm.rainbow(np.linspace(0, 1, num_particles))
+    
+    max_deviation = 0.0
+    max_time = 0.0
+    
+    # Plot deviation evolution for each matched particle
+    for idx, (baseline_pid, comp_pid) in enumerate(sorted(matching.items())):
+        baseline_traj = baseline_trajs[baseline_pid]
+        comp_traj = comparison_trajs[comp_pid]
+        
+        time_points, deviations = compute_trajectory_deviation_evolution(baseline_traj, comp_traj)
+        
+        if time_points and deviations:
+            # Plot with alpha for transparency when many curves
+            alpha = 0.3 if num_particles > 20 else 0.6
+            plt.plot(time_points, deviations, color=colors[idx], alpha=alpha, linewidth=1.0)
+            
+            # Track maximum values for axis scaling
+            if deviations:
+                max_deviation = max(max_deviation, max(deviations))
+            if time_points:
+                max_time = max(max_time, max(time_points))
+    
+    plt.xlabel('Simulation Time (s)', fontsize=12)
+    plt.ylabel('Trajectory Deviation from Baseline (units)', fontsize=12)
+    plt.title(f'Particle Trajectory Deviation Evolution - {run_name}\n({num_particles} particles)', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    
+    # Add some padding to the y-axis
+    if max_deviation > 0:
+        plt.ylim(0, max_deviation * 1.1)
+    
+    # Add text annotation
+    plt.text(0.02, 0.98, f'Each curve represents one particle\nShowing deviation from baseline over time', 
+             transform=plt.gca().transAxes, fontsize=10, verticalalignment='top',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"    Saved deviation evolution plot: {output_file}")
+
 def match_particles_by_initial_position(baseline_trajs: Dict[int, List], 
                                        comparison_trajs: Dict[int, List]) -> Dict[int, int]:
     """
@@ -334,6 +460,17 @@ def compare_runs(baseline_file: str, comparison_files: List[str]) -> None:
             print(f"  Maximum trajectory deviation: {max_deviation_overall:.4f} units")
             print(f"  Average relative deviation: {avg_relative_deviation:.6f} ({avg_relative_deviation*100:.4f}%)")
             print(f"  Average path length difference: {avg_path_length_diff:.4f} units")
+            
+            # Generate deviation evolution plot for this run
+            # Extract filename without extension for plot naming
+            comp_basename = os.path.splitext(os.path.basename(comp_file))[0]
+            plot_filename = f"deviation_evolution_run{comp_idx}_{comp_basename}.png"
+            print(f"  Generating deviation evolution plot...")
+            try:
+                plot_deviation_evolution(baseline_trajs, comp_trajs, matching, 
+                                       f"Run {comp_idx}", plot_filename)
+            except Exception as e:
+                print(f"    Warning: Could not generate plot: {e}")
             
             all_results.append({
                 'run_idx': comp_idx,

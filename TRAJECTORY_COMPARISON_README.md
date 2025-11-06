@@ -122,6 +122,8 @@ Comparing Run 2: run2/particle_trajectories.csv
   Maximum trajectory deviation: 2.1456 units
   Average relative deviation: 0.005671 (0.5671%)
   Average path length difference: 1.2345 units
+  Generating deviation evolution plot...
+    Saved deviation evolution plot: deviation_evolution_run2_run2_trajectories.png
 
 ...
 
@@ -151,6 +153,62 @@ Metrics:
 The Relative Deviation percentage shows the trajectory stochasticity
 as a fraction of the total motion. Lower values indicate more reproducible results.
 ```
+
+## Deviation Evolution Plots
+
+In addition to the numerical metrics, the tool automatically generates **deviation evolution plots** for each comparison run. These plots show how the deviation from baseline changes over simulation time for all tracked particles.
+
+### Plot Features
+
+Each plot contains:
+- **~50 curves**: One for each tracked particle
+- **X-axis**: Simulation time (seconds)
+- **Y-axis**: Trajectory deviation from baseline (units)
+- **Color coding**: Different colors for each particle (with transparency when many particles)
+- **Automatic saving**: Saved as `deviation_evolution_run{N}_{filename}.png`
+
+### Example Plot
+
+![Deviation Evolution Example](deviation_evolution_example.png)
+
+The plot shows:
+- How deviation evolves throughout the simulation
+- Whether deviation accumulates over time or remains stable
+- Individual particle behavior vs. collective trends
+- Time periods with higher or lower stochasticity
+
+### Interpreting Deviation Evolution
+
+**Patterns to look for:**
+
+1. **Increasing trend**: Deviation grows over time
+   - May indicate accumulation of numerical errors
+   - Consider shorter time steps or higher precision
+
+2. **Stable/plateau**: Deviation reaches a steady level
+   - Good sign - variations are bounded
+   - Stochasticity is manageable
+
+3. **Oscillating**: Deviation fluctuates
+   - May reflect physical phenomena (collisions, flow patterns)
+   - Normal for complex particle interactions
+
+4. **Outlier particles**: Few curves significantly higher
+   - Some particles more sensitive to initial conditions
+   - May need investigation of specific particle behavior
+
+### Plot File Naming
+
+Plots are named using the pattern:
+```
+deviation_evolution_run{N}_{original_filename}.png
+```
+
+For example:
+- `deviation_evolution_run2_particle_trajectories.png`
+- `deviation_evolution_run3_OUT_slump_V2.png`
+
+Files are saved in the current working directory.
 
 ## Algorithm Details
 
