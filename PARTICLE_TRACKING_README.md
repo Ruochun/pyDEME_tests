@@ -14,6 +14,8 @@ The `pyDEME_DFCSlump.py` script now tracks the xyz positions of approximately 50
 
 ### New Files
 - **visualize_trajectories.py**: A visualization script to create plots from the trajectory data
+- **compare_trajectory_runs.py**: Tool to compare trajectories across multiple runs and quantify GPU stochasticity
+- **example_trajectory_comparison.py**: Example demonstrating trajectory comparison usage
 
 ## Output Format
 
@@ -110,6 +112,35 @@ particle_0['vy'] = particle_0['y'].diff() / particle_0['time'].diff()
 particle_0['vz'] = particle_0['z'].diff() / particle_0['time'].diff()
 
 # And more...
+```
+
+### Comparing Trajectories Across Multiple Runs
+
+To quantify GPU stochasticity across multiple simulation runs, use the trajectory comparison tool:
+
+```bash
+# Compare multiple runs against baseline (run 1)
+python compare_trajectory_runs.py \
+    --baseline run1/particle_trajectories.csv \
+    --runs run2/particle_trajectories.csv run3/particle_trajectories.csv run4/particle_trajectories.csv
+
+# Or use glob patterns
+python compare_trajectory_runs.py \
+    --baseline run1/particle_trajectories.csv \
+    --runs run*/particle_trajectories.csv
+```
+
+This tool computes:
+- **Average trajectory deviation**: Mean point-wise distance between matched trajectories
+- **Relative deviation (%)**: Deviation as percentage of path length (key metric for reproducibility)
+- **Maximum deviation**: Worst-case deviation across all particles
+- **Path length difference**: Variation in total distance traveled
+
+See **TRAJECTORY_COMPARISON_README.md** for detailed documentation and interpretation guide.
+
+You can also run the example:
+```bash
+python example_trajectory_comparison.py
 ```
 
 ## Technical Details
