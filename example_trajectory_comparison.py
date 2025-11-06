@@ -9,6 +9,7 @@ from multiple simulation runs.
 """
 
 import os
+import sys
 import subprocess
 import tempfile
 import math
@@ -101,14 +102,14 @@ def main():
         ] + comparison_files
         
         try:
-            subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True)
         except FileNotFoundError:
             print("Error: compare_trajectory_runs.py not found in current directory")
             print("Make sure you're running this from the pyDEME_tests directory")
-            return
+            return 1
         except subprocess.CalledProcessError as e:
             print(f"Error running comparison: {e}")
-            return
+            return 1
         
         print()
         print("=" * 80)
@@ -133,6 +134,8 @@ def main():
         print("      --baseline OUT_slump_V1/particle_trajectories.csv \\")
         print("      --runs OUT_slump_V*/particle_trajectories.csv")
         print()
+    
+    return 0
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

@@ -10,13 +10,21 @@ import os
 import sys
 import tempfile
 import math
-from compare_trajectory_runs import (
-    load_trajectories,
-    calculate_path_length,
-    interpolate_trajectory_at_time,
-    compute_trajectory_deviation,
-    match_particles_by_initial_position
-)
+import traceback
+
+# Try to import compare_trajectory_runs module
+try:
+    from compare_trajectory_runs import (
+        load_trajectories,
+        calculate_path_length,
+        interpolate_trajectory_at_time,
+        compute_trajectory_deviation,
+        match_particles_by_initial_position
+    )
+except ImportError as e:
+    print(f"Error: Could not import compare_trajectory_runs module: {e}")
+    print("Make sure compare_trajectory_runs.py is in the same directory.")
+    sys.exit(1)
 
 def create_test_trajectory_file(filename, trajectories):
     """
@@ -303,8 +311,8 @@ def run_all_tests():
             failed += 1
         except Exception as e:
             print(f"✗ Test error: {e}")
-            import traceback
             traceback.print_exc()
+            failed += 1
             failed += 1
         print()
     

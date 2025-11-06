@@ -26,9 +26,20 @@ import csv
 import math
 import sys
 import glob
-import numpy as np
-from scipy.optimize import linear_sum_assignment
 from typing import Dict, List, Tuple
+
+# Check for required dependencies
+try:
+    import numpy as np
+except ImportError:
+    print("Error: numpy is required. Install it with: pip install numpy")
+    sys.exit(1)
+
+try:
+    from scipy.optimize import linear_sum_assignment
+except ImportError:
+    print("Error: scipy is required. Install it with: pip install scipy")
+    sys.exit(1)
 
 def load_trajectories(filename: str) -> Dict[int, List[Tuple[float, float, float, float]]]:
     """
@@ -87,6 +98,9 @@ def calculate_path_length(trajectory: List[Tuple[float, float, float, float]]) -
     
     return total_length
 
+# Constant for time epsilon to avoid division by zero in interpolation
+TIME_EPSILON = 1e-10
+
 def interpolate_trajectory_at_time(trajectory: List[Tuple[float, float, float, float]], 
                                   target_time: float) -> Tuple[float, float, float]:
     """
@@ -117,7 +131,7 @@ def interpolate_trajectory_at_time(trajectory: List[Tuple[float, float, float, f
         
         if t1 <= target_time <= t2:
             # Linear interpolation
-            if t2 - t1 < 1e-10:  # Avoid division by zero
+            if t2 - t1 < TIME_EPSILON:  # Avoid division by zero
                 return (x1, y1, z1)
             
             alpha = (target_time - t1) / (t2 - t1)
