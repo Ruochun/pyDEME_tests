@@ -13,10 +13,12 @@ parser = argparse.ArgumentParser()
 # parser.add_argument("--in_name", "-i", help="input file name(s) for particles", type=str, nargs='+', required=True)
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
 parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
+parser.add_argument("--particle_files", "-p", help="input particle files", type=str, nargs='+', default=["./slump_va_A076800.dat", "./DFCgeo000-data-particles-SCC-2.dat"])
 args = parser.parse_args()
 # in_name = args.in_name
 out_name = args.out_name
 settle = args.settle
+particle_files = args.particle_files
 
 # Concrete properties
 h_layer=4.0
@@ -276,8 +278,7 @@ if __name__ == "__main__":
 													)
 
 	# Read and load predefined particle list
-	particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/slump_va_A076800.dat", current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer)
-	# particle_tracker = ReadDFCparticles(DEMSim, [current_dir + "/DFCgeo000-data-particles-SCC-2.dat"], rho, floor_mat, mortar_layer)
+	particle_tracker = ReadDFCparticles(DEMSim, particle_files, rho, floor_mat, mortar_layer)
 
 	# Top plate is at y=300, pointing towards -y
 	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
