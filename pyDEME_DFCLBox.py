@@ -13,12 +13,12 @@ parser = argparse.ArgumentParser()
 # parser.add_argument("--in_name", "-i", help="input file name(s) for particles", type=str, nargs='+', required=True)
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
 parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
-parser.add_argument("--particle_files", "-p", help="input particle files", type=str, nargs='+', default=["./slump_va_A076800.dat", "./DFCgeo000-data-particles-SCC-2.dat"])
+parser.add_argument("--particle_file", "-p", help="input particle files", type=str, default="./DFCgeo000-data-particles-LBOX_SCC1.dat")
 args = parser.parse_args()
 # in_name = args.in_name
 out_name = args.out_name
 settle = args.settle
-particle_files = args.particle_files
+particle_file = args.particle_file
 
 # Concrete properties
 h_layer=4.0
@@ -33,7 +33,7 @@ vair=0.03
 nF=0.5	
 
 # volume of specimen
-specimenVol=( chrono.CH_PI*pow(100,2)*600/3- chrono.CH_PI*pow(50,2)*300/3)
+specimenVol=600*200*100
 Vol=specimenVol
 
 va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair
@@ -54,8 +54,9 @@ sgmTau0=1E-7
 kappa0=100.
 eta_inf=2.0E-5 # can be used to slow down the pile collapse
 
-# Define fixed family
+# Define some families
 FIXED_FAM = 10
+TEMP_FAM = 11
 
 # These are placeholders
 flocbeta = 0.01
@@ -63,69 +64,45 @@ flocm = 1.0
 flocTcr = 100.
 lambda_init = 2.0
 
-def AddSlumpCone(sys, mat, density, radius, height, current_dir):
-	obj_file = current_dir + "/coni_100_50_300.obj"
-	SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
-	SlumpCone.SetMass(1)
-	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
-	SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
-	# SlumpCone.SetInitPos([0,133,0])
-	SlumpCone.SetFamily(FIXED_FAM)
-	return sys.Track(SlumpCone)
+def AddLBox(sys, mat, mesh_dir):
+	Box = sys.AddWavefrontMeshObject(mesh_dir, mat)
+	Box.SetMass(1)
+	# q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
+	# Box.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
+	# Box.SetInitPos([0,133,0])
+	Box.SetFamily(FIXED_FAM)
+
+	# Also add the three cylinders
+	cyls = sys.AddExternalObject()
+	pos1 = [56., 0., 0.]
+	rad = 6.
+	cyls.AddCylinder(pos1, [0, 1, 0], rad, mat, -1)
+
+	pos2 = [56., 0., -53.]
+	cyls.AddCylinder(pos2, [0, 1, 0], rad, mat, -1)
+
+	pos3 = [56., 0., 53.]
+	cyls.AddCylinder(pos3, [0, 1, 0], rad, mat, -1)
+	cyls.SetFamily(FIXED_FAM)
+	return sys.Track(Box)
 
 def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 	particles = []
 
-	if len(file_name) == 1:
-
-		with open(file_name[0], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 5:
-					n = int(parts[0])
-					x = float(parts[1])
-					y = float(parts[2])
-					z = float(parts[3])
-					d = float(parts[4])
-					particles.append([n, x, y, z, d])
-
-
-	elif len(file_name) == 2:
-		i = 0
-		with open(file_name[0], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 3:
-					x = float(parts[0])
-					y = float(parts[1])
-					z = float(parts[2])
-					d = float(0)
-					particles.append([i, x, y, z, d])
-					i += 1
-
-		i = 0
-		with open(file_name[1], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 5:
-					d = float(parts[4])
-					particles[i][4] = d
-					i += 1
-		if i != len(particles):
-			raise ValueError("Number of particles in the two files do not match")
-
-	else:
-		raise ValueError("file_name must be a string or a list of two strings")
+	with open(file_name, "r") as f:
+		# read in a file (ignoring the lines with // comments)
+		for line in f:
+			if line.startswith("//"):
+				continue
+			parts = line.split()
+			if len(parts) == 5:
+				n = int(parts[0])
+				x = float(parts[1])
+				y = float(parts[2])
+				z = float(parts[3])
+				d = float(parts[4])
+				particles.append([n, x, y, z, d])
 
 	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	# ChVector3d t(0,0,0)
@@ -148,18 +125,6 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 	print(f"Original rho: {rho}, new rho: {rho_new}")
 
-	# # permute particles if needed
-	# if permutation > 0.0:
-	# 	each_permutation = permutation / len(particles)
-	# 	# generate random normalized vector in 3D
-	# 	for i in range(len(particles)):
-	# 		random_dir_3D = numpy.random.rand(3)
-	# 		random_dir_3D /= numpy.linalg.norm(random_dir_3D)
-	# 		# move each particle along this direction by a distance of each_permutation
-	# 		particles[i][1] += random_dir_3D[0] * each_permutation 
-	# 		particles[i][2] += random_dir_3D[1] * each_permutation
-	# 		particles[i][3] += random_dir_3D[2] * each_permutation
-
 	i = 0
 	for particle in particles:
 		x_pos=particle[1]
@@ -168,8 +133,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		radius=radii[i]
        
 		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
-		if len(file_name) == 1:
-			pos=csys.TransformPointLocalToParent(pos)
+		# pos=csys.TransformPointLocalToParent(pos)
 		# print("pos: ", pos, "\t", "rotated pos: ", pos)
 		mass = rho_new * Vols[i]
 
@@ -193,7 +157,7 @@ if __name__ == "__main__":
 	# get the current directory
 	current_dir = os.getcwd()
 
-	out_dir = current_dir + "/OUT_slump_V1/"; 
+	out_dir = current_dir + "/OUT_LBox/"; 
 	# Create oputput directories
 	if not os.path.exists(out_dir):
 		os.makedirs(out_dir)
@@ -211,7 +175,7 @@ if __name__ == "__main__":
 	DEMSim.SetJitifyClumpTemplates(False)
 	DEMSim.SetJitifyMassProperties(False)
 	DEMSim.UseCubForceCollection()
-	DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
+	DEMSim.InstructBoxDomainDimension(2000.0, 2000.0, 2000.0)
 	DEMSim.SetErrorOutAvgContacts(250)
 
 	DEMSim.SetGravitationalAcceleration([0, -9810, 0])
@@ -220,17 +184,15 @@ if __name__ == "__main__":
 										"alpha_mat":alpha, "beta_mat":beta, "np_mat":np, "sgmTmax_mat":sgmTmax, 
 										"sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf, 
 										"flocbeta_mat":flocbeta, "flocTcr_mat":flocTcr, "flocm_mat":flocm, "lambda_init_mat":lambda_init})
+	
+	AddLBox(DEMSim, floor_mat, current_dir + "/LBox_NoCyl.obj")
+	
+	# Optionally we can add a gate plane here
+	# gate = DEMSim.AddPlane([56.0, 0.0, 0.0], [-1.0, 0.0, 0.0], floor_mat)
+	# gate.SetFamily(TEMP_FAM)
 
-	# Floor is at y=0, pointing towards +y
-	bottom_plane = DEMSim.AddBCPlane([0,0,0], [0,1,0], floor_mat)
-	# bottom_plane.SetFamily(FIXED_FAM)
-
-	cyl_radius=100
-	cyl_height=150
-	density=7.8E-9
-
-	SlumpConeBody = AddSlumpCone(DEMSim, floor_mat, density*1000, cyl_radius, cyl_height, current_dir)
-	# Let family 10 be fixed
+	# Let family 10,11 be fixed
+	DEMSim.SetFamilyFixed(TEMP_FAM)
 	DEMSim.SetFamilyFixed(FIXED_FAM)
 
 	# Change default contact force algorithm to fresh concrete ones
@@ -278,11 +240,7 @@ if __name__ == "__main__":
 													)
 
 	# Read and load predefined particle list
-	particle_tracker = ReadDFCparticles(DEMSim, particle_files, rho, floor_mat, mortar_layer)
-
-	# Top plate is at y=300, pointing towards -y
-	topPlate = DEMSim.AddBCPlane([0,300,0], [0,-1,0], floor_mat)
-	topPlate.SetFamily(FIXED_FAM)
+	particle_tracker = ReadDFCparticles(DEMSim, particle_file, rho, floor_mat, mortar_layer)
 
 	KE_finder = DEMSim.CreateInspector("clump_kinetic_energy")
 	# maxZ_finder = DEMSim.CreateInspector("clump_max_z")
@@ -313,8 +271,8 @@ if __name__ == "__main__":
 
 	if settle:
 
-		# 1. phase: waiting with a plate on top of the SlumpCone
-		print("\n 1. phase: waiting with a plate on top of the SlumpCone \n")
+		# 1. phase: waiting with a plate as the gate
+		print("\n 1. phase: waiting with a plate as the gate \n")
 
 		while t < 5.0:
 			if (step_num % 20 == 0) and (timestep < max_step_size):
@@ -328,7 +286,7 @@ if __name__ == "__main__":
 				filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 				meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
 				DEMSim.WriteSphereFile(filename)
-				DEMSim.WriteMeshFile(meshname)
+				# DEMSim.WriteMeshFile(meshname)
 				print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
 				# print(f"Bin num: {DEMSim.GetBinNum()}")
 				# print(f"Bin size: {DEMSim.GetBinSize()}")
@@ -367,10 +325,10 @@ if __name__ == "__main__":
 	DEMSim.UpdateStepSize(timestep)
 	
 	# Disable contact between some entities and the particles
-	DEMSim.DisableContactBetweenFamilies(FIXED_FAM, 0)
+	DEMSim.DisableContactBetweenFamilies(TEMP_FAM, 0)
 
 	start_time = time.time()
-	while t < phase1_end + 60.:
+	while t < phase1_end + 15.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
@@ -385,7 +343,7 @@ if __name__ == "__main__":
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
 			DEMSim.WriteSphereFile(filename)
-			DEMSim.WriteMeshFile(meshname)
+			# DEMSim.WriteMeshFile(meshname)
 			print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
 			# print(f"Bin num: {DEMSim.GetBinNum()}")
 			# print(f"Bin size: {DEMSim.GetBinSize()}")
