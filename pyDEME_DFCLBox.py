@@ -114,16 +114,17 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 	Vols = []
 	radii = []
 	for particle in particles:	
-		radius=particle[4]/2+h_layer
+		# Our input file loads r directly
+		radius=particle[4]+h_layer
 		radii.append(radius)
 		Vol = 4/3*chrono.CH_PI*pow(radius, 3)
 		# mass = rho/2*Vol
 		totVol += Vol
 		Vols.append(Vol)
 
-	rho_new = rho*specimenVol/totVol
-
-	print(f"Original rho: {rho}, new rho: {rho_new}")
+	# rho_new = rho*specimenVol/totVol
+	# print(f"Original rho: {rho}, new rho: {rho_new}")
+	print(f"rho is {rho}")
 
 	i = 0
 	for particle in particles:
@@ -135,7 +136,9 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
 		# pos=csys.TransformPointLocalToParent(pos)
 		# print("pos: ", pos, "\t", "rotated pos: ", pos)
-		mass = rho_new * Vols[i]
+
+		# I don't know why Bahar did this
+		mass = rho / 2. * Vols[i]
 
 		# create templates for each sphere
 		my_templates.append(sys.LoadSphereType(
@@ -186,6 +189,7 @@ if __name__ == "__main__":
 										"flocbeta_mat":flocbeta, "flocTcr_mat":flocTcr, "flocm_mat":flocm, "lambda_init_mat":lambda_init})
 	
 	AddLBox(DEMSim, floor_mat, current_dir + "/LBox_NoCyl.obj")
+	# AddLBox(DEMSim, floor_mat, current_dir + "/LBox_Mesh.obj")
 	
 	# Optionally we can add a gate plane here
 	# gate = DEMSim.AddPlane([56.0, 0.0, 0.0], [-1.0, 0.0, 0.0], floor_mat)
@@ -247,8 +251,8 @@ if __name__ == "__main__":
 
 	timestep = 1.0e-8
 	DEMSim.SetInitTimeStep(timestep)
-	DEMSim.SetMaxVelocity(400000.)
-	DEMSim.SetErrorOutVelocity(500000.)
+	DEMSim.SetMaxVelocity(10.)
+	DEMSim.SetErrorOutVelocity(50000.)
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
@@ -318,7 +322,7 @@ if __name__ == "__main__":
 	print("\n 2. phase: flow  \n")
 
 	phase1_end = t
-	timestep=1e-8
+	timestep=1e-5
 	stepsize_increase_mult = 1.01
 
 	DEMSim.DoDynamicsThenSync(0)
@@ -328,16 +332,13 @@ if __name__ == "__main__":
 	DEMSim.DisableContactBetweenFamilies(TEMP_FAM, 0)
 
 	start_time = time.time()
-	while t < phase1_end + 15.:
+	while t < phase1_end + 20.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
-			# ke = KE_finder.GetValue()
-			# print(f"Kinetic energy: {ke}")
-
 
 		if (t >= out_time):
-			print(f"============ Time {t}, slumping =============")
+			print(f"============ Time {t}, flowing =============")
 			print(f"Current step size: {timestep}")
 			print(f"Outputting frame: {currframe}")
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")

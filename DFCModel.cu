@@ -82,7 +82,7 @@ do {
 
     } else if (ContactType == deme::SPHERE_MESH_CONTACT) { 
         // Concrete-container interaction
-        R2 = 0.;
+        R2 = 5.; //  0.;
         h = mortar_layer / 2.;
         // sgmTmax=this->material->Get_sgmTmax()/2;
         L0ij = R1 + R2 - h;
@@ -94,7 +94,7 @@ do {
 
     } else { 
         /// Concrete-analytical interaction
-        R2 = 0.;
+        R2 = 6.; // 0.;
         h = mortar_layer / 2.;
         // sgmTmax=this->material->Get_sgmTmax()/2;
         L0ij = R1 + R2 - h;
