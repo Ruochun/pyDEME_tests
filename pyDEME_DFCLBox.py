@@ -66,12 +66,21 @@ flocTcr = 100.
 lambda_init = 2.0
 
 def AddLBox(sys, mat, mesh_dir):
-	Box = sys.AddWavefrontMeshObject(mesh_dir, mat)
-	Box.SetMass(1)
+	Box_Mesh = sys.AddWavefrontMeshObject(mesh_dir, mat)
+	Box_Mesh.SetMass(1)
 	# q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	# Box.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
 	# Box.SetInitPos([0,133,0])
-	Box.SetFamily(FIXED_FAM)
+	Box_Mesh.SetFamily(FIXED_FAM)
+
+	# Add extra planes when needed
+	Box_TheRest = sys.AddExternalObject()
+	Box_TheRest.AddPlane([-50, 0, 0], [1, 0, 0], mat)
+	Box_TheRest.AddPlane([0, 0, 100], [0, 0, -1], mat)
+	Box_TheRest.AddPlane([0, 0, -100], [0, 0, 1], mat)
+	Box_TheRest.AddPlane([650, 0, 0], [-1, 0, 0], mat)
+	Box_TheRest.AddPlane([0, 0, 0], [0, 1, 0], mat)
+	Box_TheRest.SetFamily(FIXED_FAM)
 
 	# Also add the three cylinders
 	cyls = sys.AddExternalObject()
@@ -85,7 +94,7 @@ def AddLBox(sys, mat, mesh_dir):
 	pos3 = [56., 0., 53.]
 	cyls.AddCylinder(pos3, [0, 1, 0], rad, mat, -1)
 	cyls.SetFamily(FIXED_FAM)
-	return sys.Track(Box)
+	return sys.Track(Box_TheRest)
 
 def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
@@ -188,7 +197,8 @@ if __name__ == "__main__":
 										"sgmTau0_mat":sgmTau0, "kappa0_mat":kappa0, "eta_inf_mat":eta_inf, 
 										"flocbeta_mat":flocbeta, "flocTcr_mat":flocTcr, "flocm_mat":flocm, "lambda_init_mat":lambda_init})
 	
-	AddLBox(DEMSim, floor_mat, current_dir + "/LBox_NoCyl.obj")
+	AddLBox(DEMSim, floor_mat, current_dir + "/LBox_UltraSimplified.obj")
+	# AddLBox(DEMSim, floor_mat, current_dir + "/LBox_NoCyl.obj")
 	# AddLBox(DEMSim, floor_mat, current_dir + "/LBox_Mesh.obj")
 	
 	# Optionally we can add a gate plane here
@@ -334,7 +344,7 @@ if __name__ == "__main__":
 	DEMSim.DisableContactBetweenFamilies(TEMP_FAM, 0)
 
 	start_time = time.time()
-	while t < phase1_end + 20.:
+	while t < phase1_end + 15.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)
