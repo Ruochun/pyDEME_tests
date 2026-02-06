@@ -84,14 +84,14 @@ def AddLBox(sys, mat, mesh_dir):
 
 	# Also add the three cylinders
 	cyls = sys.AddExternalObject()
-	pos1 = [56., 0., 0.]
+	pos1 = [66., 0., 0.]
 	rad = 6.
 	cyls.AddCylinder(pos1, [0, 1, 0], rad, mat, -1)
 
-	pos2 = [56., 0., -53.]
+	pos2 = [66., 0., -53.]
 	cyls.AddCylinder(pos2, [0, 1, 0], rad, mat, -1)
 
-	pos3 = [56., 0., 53.]
+	pos3 = [66., 0., 53.]
 	cyls.AddCylinder(pos3, [0, 1, 0], rad, mat, -1)
 	cyls.SetFamily(FIXED_FAM)
 	return sys.Track(Box_TheRest)
