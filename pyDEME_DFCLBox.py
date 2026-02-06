@@ -39,7 +39,8 @@ Vol=specimenVol
 va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair
 va0=(1-pow((minD/maxD),nF))*va
 Va0=va0*Vol
-rho=cement*(1.0+WtoC+AtoC)*1E-12
+# rho=cement*(1.0+WtoC+AtoC)*1E-12
+rho=1.47919e-9 
 
 # Define material parameters of fresh concrete
 mortar_layer=h_layer
@@ -124,7 +125,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 	# rho_new = rho*specimenVol/totVol
 	# print(f"Original rho: {rho}, new rho: {rho_new}")
-	print(f"rho is {rho}")
+	print(f"rho is {rho}, mass is around {rho * Vols[0]}")
 
 	i = 0
 	for particle in particles:
@@ -137,8 +138,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		# pos=csys.TransformPointLocalToParent(pos)
 		# print("pos: ", pos, "\t", "rotated pos: ", pos)
 
-		# I don't know why Bahar did this
-		mass = rho / 2. * Vols[i]
+		mass = rho * Vols[i]
 
 		# create templates for each sphere
 		my_templates.append(sys.LoadSphereType(
@@ -251,11 +251,13 @@ if __name__ == "__main__":
 
 	timestep = 1.0e-8
 	DEMSim.SetInitTimeStep(timestep)
-	DEMSim.SetMaxVelocity(10.)
+	DEMSim.SetMaxVelocity(400000.)
 	DEMSim.SetErrorOutVelocity(50000.)
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
+	DEMSim.SetInitBinNumTarget(int(1e7))
+	DEMSim.DisableAdaptiveBinSize()
 	DEMSim.Initialize()
 
 	max_step_size = 1e-5
