@@ -294,6 +294,8 @@ if __name__ == "__main__":
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
+	DEMSim.SetInitBinNumTarget(int(1e7))
+	DEMSim.DisableAdaptiveBinSize()
 	DEMSim.Initialize()
 
 	max_step_size = 1e-5
