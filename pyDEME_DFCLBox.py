@@ -202,8 +202,8 @@ if __name__ == "__main__":
 	# AddLBox(DEMSim, floor_mat, current_dir + "/LBox_Mesh.obj")
 	
 	# Optionally we can add a gate plane here
-	# gate = DEMSim.AddPlane([56.0, 0.0, 0.0], [-1.0, 0.0, 0.0], floor_mat)
-	# gate.SetFamily(TEMP_FAM)
+	gate = DEMSim.AddBCPlane([56.0, 0.0, 0.0], [-1.0, 0.0, 0.0], floor_mat)
+	gate.SetFamily(TEMP_FAM)
 
 	# Let family 10,11 be fixed
 	DEMSim.SetFamilyFixed(TEMP_FAM)
