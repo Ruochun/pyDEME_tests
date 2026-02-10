@@ -34,7 +34,7 @@ def surface_reconstrution(
 
     # Import the data file into the OVITO pipeline
     # pipeline = import_file(input_file, columns=['Particle Identifier', 'Position.X', 'Position.Y', 'Position.Z'])
-    pipeline = import_file(input_file, columns=['Position.X', 'Position.Y', 'Position.Z'])
+    pipeline = import_file(input_file, columns=['Position.X', 'Position.Y', 'Position.Z', 'Radius'])
 
     # Create the ConstructSurfaceModifier with given parameters
     modifier = ConstructSurfaceModifier()
