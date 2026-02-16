@@ -1,4 +1,4 @@
-do {
+if (overlapDepth > 0) {
     // Get material properties
     //
     float mortar_layer = mortar_layer_mat[bodyAMatType];
@@ -53,10 +53,6 @@ do {
     // initialize force values
     //
     force = make_float3(0, 0, 0);
-
-    if (overlapDepth < 0) {
-    break;
-    }
 
     float3 Vx, Vy, Vz;
     float3 normal_dir = -B2A; // DEME uses B2A as normal direction, opposite
@@ -338,7 +334,15 @@ do {
     // return std::make_pair(-force, torque);
     //   return {-force, torque};
 
-    if (isnan(length(force))) {
-    printf("Force NaN!!!!\n");
-    }
-} while (0);
+    // if (isnan(length(force))) {
+    //     printf("Force NaN!!!!\n");
+    // }
+} else {
+    // No contact
+    contact_info_step_time = 0.f;
+    contact_info_lambda = 0.f;
+    contact_info_strain_x = 0.f;
+    contact_info_strain_y = 0.f;
+    contact_info_strain_z = 0.f;
+    force = make_float3(0, 0, 0);
+}
