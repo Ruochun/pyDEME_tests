@@ -344,7 +344,7 @@ if __name__ == "__main__":
 	DEMSim.DisableContactBetweenFamilies(TEMP_FAM, 0)
 
 	start_time = time.time()
-	while t < phase1_end + 15.:
+	while t < phase1_end + 10.:
 		if (step_num % 10 == 0) and (timestep < max_step_size):
 			timestep = min(timestep*stepsize_increase_mult,max_step_size)
 			DEMSim.UpdateStepSize(timestep)

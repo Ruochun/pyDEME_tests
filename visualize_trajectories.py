@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Visualization script for particle trajectories from pyDEME_DFCSlump.py
+Visualization script for particle trajectories from pyDEME_DFCSlump.py or pyDEME_DFCLBox.py
 
 This script reads the particle_trajectories.csv file and creates visualizations
 of the particle trajectories during the simulation.
