@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser()
 # parser.add_argument("--in_name", "-i", help="input file name(s) for particles", type=str, nargs='+', required=True)
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
 parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
-parser.add_argument("--particle_files", "-p", help="input particle files", type=str, nargs='+', default=["./slump_va_A076800.dat", "./DFCgeo000-data-particles-SCC-2.dat"])
+parser.add_argument("--particle_files", "-p", help="input particle files", type=str, default="./slump_va_A076800.dat")
 args = parser.parse_args()
 # in_name = args.in_name
 out_name = args.out_name
@@ -77,55 +77,19 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 
 	particles = []
 
-	if len(file_name) == 1:
-
-		with open(file_name[0], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 5:
-					n = int(parts[0])
-					x = float(parts[1])
-					y = float(parts[2])
-					z = float(parts[3])
-					d = float(parts[4])
-					particles.append([n, x, y, z, d])
-
-
-	elif len(file_name) == 2:
-		i = 0
-		with open(file_name[0], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 3:
-					x = float(parts[0])
-					y = float(parts[1])
-					z = float(parts[2])
-					d = float(0)
-					particles.append([i, x, y, z, d])
-					i += 1
-
-		i = 0
-		with open(file_name[1], "r") as f:
-			# read in a file (ignoring the lines with // comments)
-			for line in f:
-				if line.startswith("//"):
-					continue
-				parts = line.split()
-				if len(parts) == 5:
-					d = float(parts[4])
-					particles[i][4] = d
-					i += 1
-		if i != len(particles):
-			raise ValueError("Number of particles in the two files do not match")
-
-	else:
-		raise ValueError("file_name must be a string or a list of two strings")
+	with open(file_name, "r") as f:
+		# read in a file (ignoring the lines with // comments)
+		for line in f:
+			if line.startswith("//"):
+				continue
+			parts = line.split()
+			if len(parts) == 5:
+				n = int(parts[0])
+				x = float(parts[1])
+				y = float(parts[2])
+				z = float(parts[3])
+				d = float(parts[4])
+				particles.append([n, x, y, z, d])
 
 	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
 	# ChVector3d t(0,0,0)
@@ -137,7 +101,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 	Vols = []
 	radii = []
 	for particle in particles:	
-		radius=particle[4]/2+h_layer
+		radius=particle[4]+h_layer
 		radii.append(radius)
 		Vol = 4/3*chrono.CH_PI*pow(radius, 3)
 		# mass = rho/2*Vol
@@ -168,8 +132,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		radius=radii[i]
        
 		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
-		if len(file_name) == 1:
-			pos=csys.TransformPointLocalToParent(pos)
+		# pos=csys.TransformPointLocalToParent(pos)
 		# print("pos: ", pos, "\t", "rotated pos: ", pos)
 		mass = rho_new * Vols[i]
 

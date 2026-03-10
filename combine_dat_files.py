@@ -49,7 +49,7 @@ def combine_dat_files(coords_file: Path, radii_file: Path, output_file: Path) ->
                     f"Line {i} of coords file has fewer than 3 values: {coord_line!r}"
                 )
             x, y, z = parts[0], parts[1], parts[2]
-            r = radius_line.strip()
+            r = float(radius_line.strip()) / 2 # for now, Bahar shared diameter rather than radius
             out.write(f"{i} {x} {y} {z} {r}\n")
 
 
