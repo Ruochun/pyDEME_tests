@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
 parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
 parser.add_argument("--particle_files", "-p", help="input particle files", type=str, default="./slump_va_A076800.dat")
+parser.add_argument("--out-dir", "-d", help="output directory", type=str, default=os.path.join(os.getcwd(), "OUT_slump_V1"))
 args = parser.parse_args()
 # in_name = args.in_name
 out_name = args.out_name
@@ -156,7 +157,7 @@ if __name__ == "__main__":
 	# get the current directory
 	current_dir = os.getcwd()
 
-	out_dir = current_dir + "/OUT_slump_V1/"; 
+	out_dir = args.out_dir
 	# Create oputput directories
 	if not os.path.exists(out_dir):
 		os.makedirs(out_dir)
