@@ -86,7 +86,7 @@ print("\nIntraclass correlation (ICC):", icc)
 plt.figure()
 plt.boxplot(data.T)
 plt.xlabel("Initial Condition")
-plt.ylabel("Result Value")
+plt.ylabel("Volume")
 plt.title("Run Variability per Initial Condition")
 plt.show()
 
