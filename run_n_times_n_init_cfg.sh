@@ -1,0 +1,43 @@
+
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_1.dat -d ./1-4 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_1.dat -d ./1-5 -s
+
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_2.dat -d ./2-2 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_2.dat -d ./2-3 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_2.dat -d ./2-4 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_2.dat -d ./2-5 -s
+
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-2 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-3 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-4 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-5 -s
+
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_4.dat -d ./4-2 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_4.dat -d ./4-3 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_4.dat -d ./4-4 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_4.dat -d ./4-5 -s
+
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-2 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-3 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-4 -s
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-5 -s
+
+
+# run csv_to_xyz for all the output files, in folders (1..5)-(1..5)
+for i in {1..5}
+do
+    for j in {1..5}
+    do
+        python csv_to_xyz.py ./DFC_Slump_different_init_runs/${i}-${j}/slump_va_M001199.csv ./DFC_Slump_different_init_runs/rs${i}-${j}.xyz
+    done
+done    
+
+# reconstruct surface out of these xyz files
+for i in {1..5}
+do
+    for j in {1..5}
+    do
+        echo "Processing run ${i}-${j}"
+        python surface_construction.py ./DFC_Slump_different_init_runs/rs${i}-${j}.xyz ./DFC_Slump_different_init_runs/rs${i}-${j}-res 70. 0 1 1
+    done
+done    
