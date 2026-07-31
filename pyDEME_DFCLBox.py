@@ -267,7 +267,7 @@ if __name__ == "__main__":
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
-	DEMSim.SetInitBinNumTarget(int(1e7))
+	DEMSim.SetInitBinNumTarget(int(5e5))
 	DEMSim.DisableAdaptiveBinSize()
 	DEMSim.Initialize()
 
@@ -279,7 +279,7 @@ if __name__ == "__main__":
 	
 	step_num = 0
 
-	frame_time = 1. / 20.
+	frame_time = 1. / 10.
 	out_time = 0.
 	
 	# Track positions of ~50 particles throughout simulation
@@ -303,7 +303,7 @@ if __name__ == "__main__":
 				filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 				meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
 				DEMSim.WriteSphereFile(filename)
-				# DEMSim.WriteMeshFile(meshname)
+				DEMSim.WriteMeshFile(meshname)
 				print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
 				# print(f"Bin num: {DEMSim.GetBinNum()}")
 				# print(f"Bin size: {DEMSim.GetBinSize()}")
@@ -357,7 +357,7 @@ if __name__ == "__main__":
 			filename = os.path.join(out_dir, f"slump_va_M{currframe:06d}.csv")
 			meshname = os.path.join(out_dir, f"slump_mesh{currframe:06d}.vtk")
 			DEMSim.WriteSphereFile(filename)
-			# DEMSim.WriteMeshFile(meshname)
+			DEMSim.WriteMeshFile(meshname)
 			print(f"Current number of contacts: {DEMSim.GetNumContacts()}")
 			# print(f"Bin num: {DEMSim.GetBinNum()}")
 			# print(f"Bin size: {DEMSim.GetBinSize()}")
