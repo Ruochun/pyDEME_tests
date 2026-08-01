@@ -2,10 +2,9 @@ import DEME
 from DEME import HCPSampler
 
 import numpy
+import math
 import os
 import time
-
-import pychrono as chrono
 
 # parse in a string
 import argparse
@@ -69,8 +68,6 @@ lambda_init = 2.0
 def AddLBox(sys, mat, mesh_dir):
 	Box_Mesh = sys.AddWavefrontMeshObject(mesh_dir, mat)
 	Box_Mesh.SetMass(1)
-	# q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
-	# Box.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
 	# Box.SetInitPos([0,133,0])
 	Box_Mesh.SetFamily(FIXED_FAM)
 
@@ -115,10 +112,6 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 				d = float(parts[4])
 				particles.append([n, x, y, z, d])
 
-	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
-	# ChVector3d t(0,0,0)
-	csys = chrono.ChCoordsysd(chrono.ChVector3d(0, 0, 0), q)
-	
 	my_templates = []
 	body_points_new = []
 	totVol = 0.0
@@ -128,7 +121,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		# Our input file loads r directly
 		radius=particle[4]+h_layer
 		radii.append(radius)
-		Vol = 4/3*chrono.CH_PI*pow(radius, 3)
+		Vol = 4/3*math.pi*pow(radius, 3)
 		# mass = rho/2*Vol
 		totVol += Vol
 		Vols.append(Vol)
@@ -144,10 +137,6 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		z_pos=particle[3]
 		radius=radii[i]
        
-		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
-		# pos=csys.TransformPointLocalToParent(pos)
-		# print("pos: ", pos, "\t", "rotated pos: ", pos)
-
 		mass = rho * Vols[i]
 
 		# create templates for each sphere
@@ -156,7 +145,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
             radius,
             mat
         ))
-		body_points_new.append([pos.x, pos.y, pos.z])
+		body_points_new.append([x_pos, y_pos, z_pos])
 
 		i += 1
 
@@ -187,7 +176,6 @@ if __name__ == "__main__":
 	DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
 	DEMSim.SetJitifyClumpTemplates(False)
 	DEMSim.SetJitifyMassProperties(False)
-	DEMSim.UseCubForceCollection()
 	DEMSim.InstructBoxDomainDimension(2000.0, 2000.0, 2000.0)
 	DEMSim.SetErrorOutAvgContacts(250)
 

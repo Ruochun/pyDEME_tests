@@ -2,10 +2,9 @@ import DEME
 from DEME import HCPSampler
 
 import numpy
+import math
 import os
 import time
-
-import pychrono as chrono
 
 # parse in a string
 import argparse
@@ -13,7 +12,7 @@ parser = argparse.ArgumentParser()
 # parser.add_argument("--in_name", "-i", help="input file name(s) for particles", type=str, nargs='+', required=True)
 parser.add_argument("--out_name", "-o", help="output file name", type=str, default="output.txt")
 parser.add_argument("--settle", "-s", help="before slumping, do NOT settle the particles to low KE", default=True, action='store_false')
-parser.add_argument("--particle_files", "-p", help="input particle files", type=str, default="./slump_va_A076800.dat")
+parser.add_argument("--particle_files", "-p", help="input particle files", type=str, default="./DFCgeo000-data-particles-SCC-2.dat")
 parser.add_argument("--out-dir", "-d", help="output directory", type=str, default=os.path.join(os.getcwd(), "OUT_slump_V1"))
 args = parser.parse_args()
 # in_name = args.in_name
@@ -34,7 +33,7 @@ vair=0.03
 nF=0.5	
 
 # volume of specimen
-specimenVol=( chrono.CH_PI*pow(100,2)*600/3- chrono.CH_PI*pow(50,2)*300/3)
+specimenVol=(math.pi*pow(100,2)*600/3 - math.pi*pow(50,2)*300/3)
 Vol=specimenVol
 
 va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair
@@ -68,8 +67,9 @@ def AddSlumpCone(sys, mat, density, radius, height, current_dir):
 	obj_file = current_dir + "/coni_100_50_300.obj"
 	SlumpCone = sys.AddWavefrontMeshObject(obj_file, mat)
 	SlumpCone.SetMass(1)
-	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
-	SlumpCone.SetInitQuat([q.e1, q.e2, q.e3, q.e0])
+	# A -90-degree rotation about X, in DEME's [x, y, z, w] quaternion order.
+	half_angle = -math.pi / 4
+	SlumpCone.SetInitQuat([math.sin(half_angle), 0.0, 0.0, math.cos(half_angle)])
 	# SlumpCone.SetInitPos([0,133,0])
 	SlumpCone.SetFamily(FIXED_FAM)
 	return sys.Track(SlumpCone)
@@ -89,13 +89,9 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 				x = float(parts[1])
 				y = float(parts[2])
 				z = float(parts[3])
-				d = float(parts[4])
+				d = float(parts[4]) 
 				particles.append([n, x, y, z, d])
 
-	q = chrono.QuatFromAngleAxis(-(chrono.CH_PI_2), chrono.VECT_X)
-	# ChVector3d t(0,0,0)
-	csys = chrono.ChCoordsysd(chrono.ChVector3d(0, 0, 0), q)
-	
 	my_templates = []
 	body_points_new = []
 	totVol = 0.0
@@ -104,7 +100,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 	for particle in particles:	
 		radius=particle[4]+h_layer
 		radii.append(radius)
-		Vol = 4/3*chrono.CH_PI*pow(radius, 3)
+		Vol = 4/3*math.pi*pow(radius, 3)
 		# mass = rho/2*Vol
 		totVol += Vol
 		Vols.append(Vol)
@@ -132,9 +128,6 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		z_pos=particle[3]
 		radius=radii[i]
        
-		pos = chrono.ChVector3d(x_pos, y_pos, z_pos)
-		# pos=csys.TransformPointLocalToParent(pos)
-		# print("pos: ", pos, "\t", "rotated pos: ", pos)
 		mass = rho_new * Vols[i]
 
 		# create templates for each sphere
@@ -143,7 +136,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
             radius,
             mat
         ))
-		body_points_new.append([pos.x, pos.y, pos.z])
+		body_points_new.append([x_pos, y_pos, z_pos])
 
 		i += 1
 
@@ -174,7 +167,6 @@ if __name__ == "__main__":
 	DEMSim.SetContactOutputContent(["OWNER", "CNT_WILDCARD"])
 	DEMSim.SetJitifyClumpTemplates(False)
 	DEMSim.SetJitifyMassProperties(False)
-	DEMSim.UseCubForceCollection()
 	DEMSim.InstructBoxDomainDimension(1000.0, 1000.0, 1000.0)
 	DEMSim.SetErrorOutAvgContacts(250)
 
