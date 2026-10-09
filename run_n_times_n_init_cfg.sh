@@ -22,9 +22,10 @@
 # python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-4 -s
 # python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_5.dat -d ./5-5 -s
 
-python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-9 -s > ./time3-9.txt 2>&1
-python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-10 -s > ./time3-10.txt 2>&1
-for i in {4..10}
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-9 -s > ./time3-9.txt 2>&1
+# python pyDEME_DFCSlump.py -p ./Slump_init_cond/init_3.dat -d ./3-10 -s > ./time3-10.txt 2>&1
+
+for i in {1..10}
 do
     for j in {1..10}
     do

@@ -106,20 +106,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		Vols.append(Vol)
 
 	rho_new = rho*specimenVol/totVol
-
 	print(f"Original rho: {rho}, new rho: {rho_new}")
-
-	# # permute particles if needed
-	# if permutation > 0.0:
-	# 	each_permutation = permutation / len(particles)
-	# 	# generate random normalized vector in 3D
-	# 	for i in range(len(particles)):
-	# 		random_dir_3D = numpy.random.rand(3)
-	# 		random_dir_3D /= numpy.linalg.norm(random_dir_3D)
-	# 		# move each particle along this direction by a distance of each_permutation
-	# 		particles[i][1] += random_dir_3D[0] * each_permutation 
-	# 		particles[i][2] += random_dir_3D[1] * each_permutation
-	# 		particles[i][3] += random_dir_3D[2] * each_permutation
 
 	i = 0
 	for particle in particles:
