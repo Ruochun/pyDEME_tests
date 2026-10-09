@@ -39,8 +39,8 @@ Vol=specimenVol
 va=1.0-cement/rho_c-(WtoC*cement)/rho_w-vair
 va0=(1-pow((minD/maxD),nF))*va
 Va0=va0*Vol
-# rho=cement*(1.0+WtoC+AtoC)*1E-12
-rho=1.47919e-9 
+rho=cement*(1.0+WtoC+AtoC)*1E-12
+# rho=1.47919e-9 
 
 # Define material parameters of fresh concrete
 mortar_layer=h_layer
@@ -126,9 +126,8 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		totVol += Vol
 		Vols.append(Vol)
 
-	# rho_new = rho*specimenVol/totVol
-	# print(f"Original rho: {rho}, new rho: {rho_new}")
-	print(f"rho is {rho}, mass is around {rho * Vols[0]}")
+	rho_new = rho*specimenVol/totVol
+	print(f"Original rho: {rho}, new rho: {rho_new}", flush=True)
 
 	i = 0
 	for particle in particles:
@@ -137,7 +136,7 @@ def ReadDFCparticles(sys, file_name, rho, mat, h_layer):
 		z_pos=particle[3]
 		radius=radii[i]
        
-		mass = rho * Vols[i]
+		mass = rho_new * Vols[i]
 
 		# create templates for each sphere
 		my_templates.append(sys.LoadSphereType(
@@ -251,7 +250,7 @@ if __name__ == "__main__":
 	timestep = 1.0e-8
 	DEMSim.SetInitTimeStep(timestep)
 	DEMSim.SetMaxVelocity(400000.)
-	DEMSim.SetErrorOutVelocity(50000.)
+	DEMSim.SetErrorOutVelocity(1e20) # 500000.
 
 	# DEMSim.SetCDUpdateFreq(5)
 	# DEMSim.DisableAdaptiveUpdateFreq()
@@ -311,6 +310,8 @@ if __name__ == "__main__":
 				print(f"Kinetic energy: {ke}")
 				if (ke < 0.5) and (step_num > 4000):
 					print("Kinetic energy is low, finishing up the settling phase.")
+					# filename = os.path.join(out_dir, f"slump_va_StartingFrame.csv")
+					# DEMSim.WriteSphereFile(filename)
 					break
 
 			DEMSim.DoDynamics(timestep)
