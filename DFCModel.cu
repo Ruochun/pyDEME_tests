@@ -1,24 +1,27 @@
+// Evaluate the DFC constitutive model in double precision. DEME supplies
+// engine-precision inputs/history and expects a float3 force; promote inputs
+// before arithmetic and narrow only when writing history or the final force.
 if (overlapDepth > 0) {
     // Get material properties
     //
-    float mortar_layer = mortar_layer_mat[bodyAMatType];
-    float ENm = ENm_mat[bodyAMatType];
-    float ENa = ENa_mat[bodyAMatType];
-    float alpha = alpha_mat[bodyAMatType];
-    float beta = beta_mat[bodyAMatType];
-    float np = np_mat[bodyAMatType];
-    float sgmTmax = sgmTmax_mat[bodyAMatType];
-    float sgmTau0 = sgmTau0_mat[bodyAMatType];
-    float kappa0 = kappa0_mat[bodyAMatType];
-    float eta_inf = eta_inf_mat[bodyAMatType];
-    float flocbeta = flocbeta_mat[bodyAMatType];
-    float flocm = flocm_mat[bodyAMatType];
-    float flocTcr = flocTcr_mat[bodyAMatType];
+    double mortar_layer = mortar_layer_mat[bodyAMatType];
+    double ENm = ENm_mat[bodyAMatType];
+    double ENa = ENa_mat[bodyAMatType];
+    double alpha = alpha_mat[bodyAMatType];
+    double beta = beta_mat[bodyAMatType];
+    double np = np_mat[bodyAMatType];
+    double sgmTmax = sgmTmax_mat[bodyAMatType];
+    double sgmTau0 = sgmTau0_mat[bodyAMatType];
+    double kappa0 = kappa0_mat[bodyAMatType];
+    double eta_inf = eta_inf_mat[bodyAMatType];
+    double flocbeta = flocbeta_mat[bodyAMatType];
+    double flocm = flocm_mat[bodyAMatType];
+    double flocTcr = flocTcr_mat[bodyAMatType];
 
     //
-    float h = mortar_layer;
-    float R1 = 5000.0;
-    float R2 = 5000.0;
+    double h = mortar_layer;
+    double R1 = 5000.0;
+    double R2 = 5000.0;
     double Rmin, Rmax, delta_rmin;
     double Lij, L0ij;
     // Material parameters of viscous part which should be defined inside
@@ -29,19 +32,19 @@ if (overlapDepth > 0) {
     //
     // Get state variables relevant to this contact
     //
-    float3 statevar;
+    double3 statevar;
     statevar.x = contact_info_strain_x;
     statevar.y = contact_info_strain_y;
     statevar.z = contact_info_strain_z;
-    float lambda0 = contact_info_lambda;
+    double lambda0 = contact_info_lambda;
     //
     // ==== SIGMA-t influenced by Flocculation ======
     sgmTmax = sgmTmax * (1. + lambda0);
     //
     if (lambda0 == 0.) {
     lambda0 = lambda_init_mat[bodyAMatType];
-    float val0 = ParticleThixoAvg[AOwner];
-    float val1 = ParticleThixoAvg[BOwner];
+    double val0 = ParticleThixoAvg[AOwner];
+    double val1 = ParticleThixoAvg[BOwner];
     //
     lambda0 = DEME_MIN(val0, val1);
     contact_info_lambda = lambda0;
@@ -54,11 +57,11 @@ if (overlapDepth > 0) {
     //
     force = make_float3(0, 0, 0);
 
-    float3 Vx, Vy, Vz;
-    float3 normal_dir = -B2A; // DEME uses B2A as normal direction, opposite
-                            // of Chrono as it seems
+    double3 Vx, Vy, Vz;
+    // DEME uses B2A as normal direction, opposite to Chrono.
+    double3 normal_dir = make_double3(-double(B2A.x), -double(B2A.y), -double(B2A.z));
 
-    XdirToDxDyDz(normal_dir, make_float3(0, 1, 0), Vx, Vy, Vz);
+    XdirToDxDyDz(normal_dir, make_double3(0, 1, 0), Vx, Vy, Vz);
     // std::cout<<" Vy: "<<Vy<<" Vz: "<<Vz<<"\t";
 
     double delta = overlapDepth;
@@ -71,7 +74,7 @@ if (overlapDepth > 0) {
         // Contact of two DFC spheres
         // center to center distance between 2 objects
         L0ij = R1 + R2 - h;
-        Lij = abs(R1 + R2 - delta);
+        Lij = fabs(R1 + R2 - delta);
         Rmin = DEME_MIN(R1, R2);
         Rmax = DEME_MAX(R1, R2);
         delta_rmin = delta / 2 * (2.0 * Rmax - delta) / Lij;
@@ -82,7 +85,7 @@ if (overlapDepth > 0) {
         h = mortar_layer / 2.;
         // sgmTmax=this->material->Get_sgmTmax()/2;
         L0ij = R1 + R2 - h;
-        Lij = abs(R1 + R2 - delta);
+        Lij = fabs(R1 + R2 - delta);
         Rmin = R1;
         // Rmin=std::min(R1, R2);
         Rmax = DEME_MAX(R1, R2);
@@ -94,13 +97,13 @@ if (overlapDepth > 0) {
         h = mortar_layer / 2.;
         // sgmTmax=this->material->Get_sgmTmax()/2;
         L0ij = R1 + R2 - h;
-        Lij = abs(R1 + R2 - delta);
+        Lij = fabs(R1 + R2 - delta);
         Rmin = R1;
         Rmax = DEME_MAX(R1, R2);
         delta_rmin = delta;
     }
 
-    double ai = abs(Rmin - delta_rmin);
+    double ai = fabs(Rmin - delta_rmin);
     double radius2 = Rmin * Rmin - ai * ai;
     double contact_area = deme::PI * radius2;
 
@@ -116,59 +119,59 @@ if (overlapDepth > 0) {
 
     // In DEME, local contact point is called locCPA and locCPB
     // DEME uses its own way to calculate rel vel
-    float3 rotVelCPA, rotVelCPB;
+    double3 rotVelCPA, rotVelCPB;
     {
     // We also need the relative velocity between A and B in global frame to
     // use in the damping terms To get that, we need contact points'
     // rotational velocity in GLOBAL frame This is local rotational velocity
     // (the portion of linear vel contributed by rotation)
-    rotVelCPA = cross(ARotVel, locCPA);
-    rotVelCPB = cross(BRotVel, locCPB);
+    rotVelCPA = cross(to_double3(ARotVel), to_double3(locCPA));
+    rotVelCPB = cross(to_double3(BRotVel), to_double3(locCPB));
     // This is mapping from local rotational velocity to global
-    applyOriQToVector3<float, deme::oriQ_t>(rotVelCPA.x, rotVelCPA.y,
+    applyOriQToVector3<double, double>(rotVelCPA.x, rotVelCPA.y,
                                             rotVelCPA.z, AOriQ.w, AOriQ.x,
                                             AOriQ.y, AOriQ.z);
-    applyOriQToVector3<float, deme::oriQ_t>(rotVelCPB.x, rotVelCPB.y,
+    applyOriQToVector3<double, double>(rotVelCPB.x, rotVelCPB.y,
                                             rotVelCPB.z, BOriQ.w, BOriQ.x,
                                             BOriQ.y, BOriQ.z);
     }
-    float time_scale_val = 1.;
-    float3 relvel = (BLinVel + rotVelCPB) - (ALinVel + rotVelCPA); // A2B vel
+    double time_scale_val = 1.;
+    double3 relvel = (to_double3(BLinVel) + rotVelCPB) - (to_double3(ALinVel) + rotVelCPA); // A2B vel
     relvel = relvel / time_scale_val;
 
-    float relvel_n_mag = dot(relvel, normal_dir);
-    float3 relvel_n = relvel_n_mag * normal_dir;
-    float3 relvel_t = relvel - relvel_n;
-    float relvel_t_mag = length(relvel_t);
+    double relvel_n_mag = dot(relvel, normal_dir);
+    double3 relvel_n = relvel_n_mag * normal_dir;
+    double3 relvel_t = relvel - relvel_n;
+    double relvel_t_mag = length(relvel_t);
     //
     // Calculate displacement increment in normal and tangential direction
     //
-    float dT = ts;
-    float delta_t = relvel_t_mag * dT;
-    float delta_n = relvel_n_mag * dT;
-    float3 v_delta_t = relvel_t * dT;
+    double dT = ts;
+    double delta_t = relvel_t_mag * dT;
+    double delta_n = relvel_n_mag * dT;
+    double3 v_delta_t = relvel_t * dT;
     //
     //  Calculate the strain increment in each local direction
     //
-    float depsN = delta_n / Lij;
-    float delta_M = dot(relvel, Vy) * dT; // v_delta_t.Dot(Vy);
-    float delta_L = dot(relvel, Vz) * dT; // v_delta_t.Dot(Vz);
-    float depsM = delta_M / Lij;
-    float depsL = delta_L / Lij;
+    double depsN = delta_n / Lij;
+    double delta_M = dot(relvel, Vy) * dT; // v_delta_t.Dot(Vy);
+    double delta_L = dot(relvel, Vz) * dT; // v_delta_t.Dot(Vz);
+    double depsM = delta_M / Lij;
+    double depsL = delta_L / Lij;
     //
     //
     //
-    float epsA = log(1 - h / (L0ij));
-    float epsN = log(Lij / L0ij);
+    double epsA = log(1 - h / (L0ij));
+    double epsN = log(Lij / L0ij);
 
 
     
-    // float epsN=statevar.x+depsN;
-    float epsM = statevar.y + depsM;
-    float epsL = statevar.z + depsL;
+    // double epsN=statevar.x+depsN;
+    double epsM = statevar.y + depsM;
+    double epsL = statevar.z + depsL;
     //
-    float epsT = powf((epsM * epsM + epsL * epsL), 0.5);
-    float epsQ = powf(epsN * epsN + alpha * epsT * epsT, 0.5);
+    double epsT = pow((epsM * epsM + epsL * epsL), 0.5);
+    double epsQ = pow(epsN * epsN + alpha * epsT * epsT, 0.5);
     //
     //
     //
@@ -186,13 +189,13 @@ if (overlapDepth > 0) {
     ////////////////////////////////////////////////////////////
     // Compressive contact;
     ////////////////////////////////////////////////////////////
-    float sgmN = 0;
-    float sgmM = 0;
-    float sgmL = 0;
-    float sgmT = 0;
+    double sgmN = 0;
+    double sgmM = 0;
+    double sgmL = 0;
+    double sgmT = 0;
     //
 
-    float stot;
+    double stot;
     if (epsN >= epsA) {
         // stot=epsQ*ENm;
         sgmN = epsN * ENm;
@@ -215,16 +218,16 @@ if (overlapDepth > 0) {
     // depsN=relvel_n_mag/Lij*dT;
     // depsT=relvel_t_mag/Lij*dT;
     // calculate strain rates
-    float vdepsN = depsN / dT;
-    float vdepsM = depsM / dT;
-    float vdepsL = depsL / dT;
-    float vDeps = powf(
+    double vdepsN = depsN / dT;
+    double vdepsM = depsM / dT;
+    double vdepsL = depsL / dT;
+    double vDeps = pow(
         (beta * vdepsN * vdepsN + vdepsM * vdepsM + vdepsL * vdepsL), 0.5);
     //
     // std::cout << "Lij : " << Lij << " vdeps_Comp : " << vDeps <<
     // std::endl;
-    float eta;
-    float lambda = lambda0;
+    double eta;
+    double lambda = lambda0;
 
     {
         // double lambda = rungeKutta4<double>(dfloc, lambda0, current_time,
@@ -233,24 +236,27 @@ if (overlapDepth > 0) {
         if (vDeps <= Deps0) {
         eta = eta0;
         } else {
-        eta = eta_inf * powf(abs(vDeps), np - 1.) +
+        eta = eta_inf * pow(fabs(vDeps), np - 1.) +
                 sgmTau0 * (1.0 + lambda) / vDeps;
         }
     }
 
-    float sgmN_vis = beta * eta * vdepsN;
-    float sgmM_vis = eta * vdepsM;
-    float sgmL_vis = eta * vdepsL;
-    float sgmT_vis = powf(sgmM_vis * sgmM_vis + sgmL_vis * sgmL_vis, 0.5);
+    double sgmN_vis = beta * eta * vdepsN;
+    double sgmM_vis = eta * vdepsM;
+    double sgmL_vis = eta * vdepsL;
+    double sgmT_vis = pow(sgmM_vis * sgmM_vis + sgmL_vis * sgmL_vis, 0.5);
     //
     //
     //
-    float forceN = contact_area * (sgmN + sgmN_vis);
-    float forceM = contact_area * (sgmM + sgmM_vis);
-    float forceL = contact_area * (sgmL + sgmL_vis);
+    double forceN = contact_area * (sgmN + sgmN_vis);
+    double forceM = contact_area * (sgmM + sgmM_vis);
+    double forceL = contact_area * (sgmL + sgmL_vis);
     // std::cout<<"epsN "<<epsN<<" sgmN "<<sgmN<<std::endl;
     // force[0]=forceN;force[1]=contact_area*(sgmM-sgmM_vis);force[2]=contact_area*(sgmL-sgmL_vis);
-    force = forceN * normal_dir + forceM * Vy + forceL * Vz;
+    const double3 force_double = forceN * normal_dir + forceM * Vy + forceL * Vz;
+    force = make_float3(static_cast<float>(force_double.x),
+                        static_cast<float>(force_double.y),
+                        static_cast<float>(force_double.z));
     // std::cout<<" force "<<force<<std::endl;
     /*
     force = -forceN * normal_dir;
@@ -269,9 +275,9 @@ if (overlapDepth > 0) {
     // Calculate Stress from material stiffness
     //
     //////////////////////////////////////////////////////////
-    float sgmN = ENm * epsN;
-    float sgmM = 0;
-    float sgmL = 0;
+    double sgmN = ENm * epsN;
+    double sgmM = 0;
+    double sgmL = 0;
     if (sgmN > sgmTmax)
         sgmN = sgmTmax;
     //
@@ -282,16 +288,16 @@ if (overlapDepth > 0) {
     //////////////////////////////////////////////////////////
     //
     // calculate strain rates
-    float vdepsN = depsN / dT;
-    float vdepsM = depsM / dT;
-    float vdepsL = depsL / dT;
-    float vDeps = powf(
+    double vdepsN = depsN / dT;
+    double vdepsM = depsM / dT;
+    double vdepsL = depsL / dT;
+    double vDeps = pow(
         (beta * vdepsN * vdepsN + vdepsM * vdepsM + vdepsL * vdepsL), 0.5);
     //
     // std::cout << "Lij : " << Lij << " vdeps_Tension : " << vDeps <<
     // std::endl;
-    float eta;
-    float lambda = lambda0;
+    double eta;
+    double lambda = lambda0;
 
     {
         // double lambda = rungeKutta4<double>(dfloc, lambda0, current_time,
@@ -300,29 +306,32 @@ if (overlapDepth > 0) {
         if (vDeps <= Deps0) {
         eta = eta0;
         } else {
-        eta = eta_inf * powf(abs(vDeps), np - 1.) +
+        eta = eta_inf * pow(fabs(vDeps), np - 1.) +
                 sgmTau0 * (1.0 + lambda) / vDeps;
         }
     }
     // std::cout<<"relvel"<<relvel<<" Deps0: "<<Deps0<<" vDeps"<<vDeps<<"
     // eta: "<<eta<<std::endl;
-    float sgmN_vis = beta * eta * vdepsN;
-    float sgmM_vis = eta * vdepsM;
-    float sgmL_vis = eta * vdepsL;
-    // double sgmT=powf(sgmM*sgmM+sgmL*sgmL,0.5);
+    double sgmN_vis = beta * eta * vdepsN;
+    double sgmM_vis = eta * vdepsM;
+    double sgmL_vis = eta * vdepsL;
+    // double sgmT=pow(sgmM*sgmM+sgmL*sgmL,0.5);
     //////////////////////////////////////////////////////////
     //
     // Combine Viscous stresses and stiffness stresses and calculate forces
     //
     //////////////////////////////////////////////////////////
     // exit(0);
-    float forceN = contact_area * (sgmN + sgmN_vis);
-    float forceM = contact_area * (sgmM + sgmM_vis);
-    float forceL = contact_area * (sgmL + sgmL_vis);
+    double forceN = contact_area * (sgmN + sgmN_vis);
+    double forceM = contact_area * (sgmM + sgmM_vis);
+    double forceL = contact_area * (sgmL + sgmL_vis);
     // std::cout<<"epsN "<<epsN<<" sgmN "<<sgmN<<std::endl;
     // double forceT = sgmT * contact_area;
     // force[0]=forceN;force[1]=contact_area*(sgmM-sgmM_vis);force[2]=contact_area*(sgmL-sgmL_vis);
-    force = forceN * normal_dir + forceM * Vy + forceL * Vz;
+    const double3 force_double = forceN * normal_dir + forceM * Vy + forceL * Vz;
+    force = make_float3(static_cast<float>(force_double.x),
+                        static_cast<float>(force_double.y),
+                        static_cast<float>(force_double.z));
     /*
     force = -forceN * normal_dir;
     if (relvel_t_mag >= sys.GetSlipVelocityThreshold())
@@ -339,10 +348,10 @@ if (overlapDepth > 0) {
     // }
 } else {
     // No contact
-    contact_info_step_time = 0.f;
-    contact_info_lambda = 0.f;
-    contact_info_strain_x = 0.f;
-    contact_info_strain_y = 0.f;
-    contact_info_strain_z = 0.f;
+    contact_info_step_time = 0.0;
+    contact_info_lambda = 0.0;
+    contact_info_strain_x = 0.0;
+    contact_info_strain_y = 0.0;
+    contact_info_strain_z = 0.0;
     force = make_float3(0, 0, 0);
 }

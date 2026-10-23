@@ -208,15 +208,15 @@ if __name__ == "__main__":
 	my_force_model.SetPerOwnerWildcards(set(["ParticleThixoAvg"]))
 	# Add a utility function for the force model to use
 	my_force_model.DefineCustomModelPrerequisites("""
-													void __device__ XdirToDxDyDz(const float3 &Vxdir,
-																				const float3 &Vsingular, 
-																				float3 &Vx,
-																				float3 &Vy, 
-																				float3 &Vz) {
-														const float3 mVnull = make_float3(0);
-														float zlen;
+													void __device__ XdirToDxDyDz(const double3 &Vxdir,
+																				const double3 &Vsingular,
+																				double3 &Vx,
+																				double3 &Vy,
+																				double3 &Vz) {
+														const double3 mVnull = make_double3(0, 0, 0);
+														double zlen;
 														if (length(Vxdir) < 1e-8) {
-														Vx = make_float3(1, 0, 0); // default X direction
+														Vx = make_double3(1, 0, 0); // default X direction
 														} else {
 														Vx = normalize(Vxdir);
 														}
@@ -224,13 +224,13 @@ if __name__ == "__main__":
 														zlen = length(Vz);
 
 														if (zlen < 1e-6) {
-														float3 mVsingualr;
-														if (abs(Vsingular.z) < 0.9)
-															mVsingualr = make_float3(0, 0, 1);
-														if (abs(Vsingular.y) < 0.9)
-															mVsingualr = make_float3(0, 1, 0);
-														if (abs(Vsingular.x) < 0.9)
-															mVsingualr = make_float3(1, 0, 0);
+														double3 mVsingualr;
+														if (fabs(Vsingular.z) < 0.9)
+															mVsingualr = make_double3(0, 0, 1);
+														if (fabs(Vsingular.y) < 0.9)
+															mVsingualr = make_double3(0, 1, 0);
+														if (fabs(Vsingular.x) < 0.9)
+															mVsingualr = make_double3(1, 0, 0);
 														Vz = cross(Vx, mVsingualr);
 														zlen = length(Vz);
 														}
