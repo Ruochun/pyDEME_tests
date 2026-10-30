@@ -1,0 +1,69 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "cppdbg",
+      "program": "${input:demePython}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "set breakpoint pending on"
+        },
+        {
+          "text": "set pagination off"
+        },
+        {
+          "text": "set disable-randomization off"
+        }
+      ],
+      "name": "Slump: launch Python under GDB",
+      "request": "launch",
+      "args": [
+        "-u",
+        "${workspaceFolder}/pyDEME_DFCSlump.py",
+        "--out-dir",
+        "${workspaceFolder}/OUT_debug_vscode"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false
+    },
+    {
+      "type": "cppdbg",
+      "program": "${input:demePython}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "text": "set breakpoint pending on"
+        },
+        {
+          "text": "set pagination off"
+        },
+        {
+          "text": "set disable-randomization off"
+        }
+      ],
+      "name": "Slump: attach GDB to running Python",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "demePython",
+      "type": "promptString",
+      "description": "Python executable from the reproducing environment",
+      "default": "/home/ruochunz/miniconda3/envs/ML/bin/python"
+    }
+  ]
+}

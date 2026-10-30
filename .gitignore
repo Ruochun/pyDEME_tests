@@ -7,3 +7,7 @@
 *.png
 *.vtk
 *.out
+
+# Keep the native debugger configuration despite the directory-wide rule above.
+!.vscode/
+!.vscode/launch.json
